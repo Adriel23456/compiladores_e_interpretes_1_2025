@@ -3,14 +3,14 @@ grammar Analizador_sintactico;
 
 program: PROGRAM ID BRA_OPEN sentence* BRA_CLOSE;
 
-// Lo que puede ser una sentencia
+// Lo que puede ser una entrada valida
 sentence: var_decl | var_assign | println;
 
 var_decl: VAR ID SEMICOLON;
 var_assign: ID ASSIGN NUM SEMICOLON;
 println: PRINTLN (NUM | ID) SEMICOLON;
 
-// Saltar espacios en blanco
+// Saltar espacios vacios
 WS: [ \t\r\n]+ -> skip;
 
 // Palabras clave
