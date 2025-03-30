@@ -2,15 +2,13 @@ grammar Analizador_sintactico_mejorado;
 
 program: PROGRAM ID BRA_OPEN sentence* BRA_CLOSE;
 
-// Lo que puede ser una sentencia
+// Lo que puede ser una entada valida
 sentence: var_decl | var_assign | println;
 
 var_decl: VAR ID SEMICOLON;
 
-// Modificado para aceptar expresiones
+// Ahora acepta expresiones
 var_assign: ID ASSIGN expr SEMICOLON;
-
-// Modificado para aceptar expresiones
 println: PRINTLN expr SEMICOLON;
 
 // Nueva regla para operaciones matemáticas y lógicas
