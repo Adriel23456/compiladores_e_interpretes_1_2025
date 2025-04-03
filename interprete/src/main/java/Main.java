@@ -4,11 +4,11 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-        // Ejemplo rápido: parsear "x = 3 + 5;"
+        // Ejemplo rápido
         String input = "program miprograma {\n" +
                 "var x;\n" +
                 "x = 5;" +
-                " if (true){\n" +
+                " if (true || false){\n" +
                 " println mutGen([0b1010, 0b1100, 0b1111], 0.2, 3);\n" +
                 " } else {\n" +
                 " println x;\n" +
