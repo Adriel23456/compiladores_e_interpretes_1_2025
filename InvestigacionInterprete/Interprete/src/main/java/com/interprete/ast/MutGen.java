@@ -38,6 +38,7 @@ public class MutGen implements ASTNode {
         List<String> resultado = new ArrayList<>();
 
         for (String individuo : population) {
+            String original = individuo;
             String bits = individuo;
             for (int g = 0; g < generations; g++) {
                 StringBuilder mutado = new StringBuilder();
@@ -51,12 +52,12 @@ public class MutGen implements ASTNode {
                 bits = mutado.toString();
             }
             resultado.add(bits);
+            if (!bits.equals(original)) {
+                System.out.println("Mutado: " + bits);
+            } else {
+                System.out.println("Sin cambio: " + bits);
+            }
         }
-
-        for (String r : resultado) {
-            System.out.println("Mutado: " + r);
-        }
-
         return resultado;
     }
 
