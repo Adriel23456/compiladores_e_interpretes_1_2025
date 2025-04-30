@@ -170,6 +170,3 @@ antlr4 -Dlanguage=Python3 assets/VGraph.g4 -o assets
 | Target OS | Linux (Ubuntu) | citeturn0file0 |
 
 ---
-
-## License
-Released under the **MIT License**. See [LICENSE](LICENSE) for details.

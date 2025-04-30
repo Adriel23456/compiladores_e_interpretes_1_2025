@@ -57,60 +57,41 @@ class CreditsView:
         
         # Text content - properly formatted in English
         self.text_content = """
-Author: Adriel S. Chaves Salazar
+Authors: Adriel S. Chaves Salazar, Jose M. Loria Cordero, Emmanuel Esquivel Chavarria, Daniel Duarte Cordero
 
 Synopsis:
 __________
-This program helps to understand the integration of a Full Stack Compiler section by section, where the following steps of compiler programming will be integrated:
-1. Lexical Analysis
-2. Syntactic Analysis
-3. Semantic Analysis
-4. Optimization
-5. Instruction Selection
-6. Register Assignment
-7. Programming / Instructions
+This is an end-to-end educational compiler, written in Python, that translates **VGraph** source code through **every** compilation phase into a native x86 executable—and even mirrors the live output to an external HDMI display if available. It covers:
 
-Additionally, the possibility to choose between a CISC or RISC assembly code language, with RISC-V and x86, will be established.
+1. **Lexical Analysis** (ANTLR 4 grammar)
+2. **Syntactic Analysis** (parse trees)
+3. **Semantic Analysis** (symbol tables + AST)
+4. **Intermediate Representation** generation (LLVM IR via llvmlite)
+5. **Optimizations** (platform-independent and target-specific)
+6. **Instruction Selection & Register Allocation** (x86 back-end)
+7. **Assembly & Linking** (`nasm`, `gcc`)
+8. **Real-Time Visualization** (800 × 600 memory buffer, SDL 2 / Pygame, optional HDMI mirroring)
+9. **Interactive IDE/GUI** for live code editing and step-by-step analysis
 
-As a final feature, the program has functionality to visualize the execution of the assembly program in real-time and analyze the computer's movement when executing the program that was provided in high-level language.
+Users can compile via CLI or launch a minimal MVC-based GUI, choose optimization levels (e.g. `-O2`), emit IR, or watch the assembly program draw graphics in real time.
 
 State of the Art:
 ________________
-A compiler is a program that takes source code written in a high-level programming language as input and generates an equivalent program in machine code as a result. This translation process is performed once, and the resulting program can be executed multiple times without needing to recompile, offering greater efficiency in execution time.
+A compiler translates high-level source code into machine code in three major phases:
 
-The compilation stages are divided into several steps:
-The process is traditionally divided into three major phases: Front-end, Middle-end, and Back-end. The Front-end handles the analysis of the source code, the Middle-end performs platform-independent optimizations, and the Back-end generates the machine code specific to the target architecture.
+- **Front-End**  
+  Performs **lexical** (tokenization), **syntactic** (parsing), and **semantic** (type checking, scope resolution) analysis. We use ANTLR 4 to define a context-free grammar for VGraph, build a concrete syntax tree, then construct an abstract syntax tree (AST) and populate a symbol table with identifier metadata (name, type, scope, memory footprint).
 
-Lexical analysis, also known as scanning or tokenization, is the first stage in both compilers and interpreters. This phase is responsible for reading the source code as a sequence of characters and grouping them into meaningful lexical units called tokens.
+- **Middle-End**  
+  Converts the AST into an **intermediate representation** (IR) using LLVM via llvmlite, applies both platform-independent and target-specific **optimizations**, and refines the IR for efficient code generation.
 
-Syntactic analysis, also known as parsing, is the second stage of the process and is responsible for determining if the token sequence generated in the previous stage complies with the grammatical rules of the language. The component responsible for this task is the parser or syntactic analyzer, which uses a context-free grammar to define the formation rules for expressions, declarations, blocks, and other language structures.
+- **Back-End**  
+  Transforms optimized IR into **assembly instructions**, performs **register allocation**, and invokes an assembler (`nasm`) and linker (`gcc`) to produce a native executable.  
 
-The result of syntactic analysis is a concrete syntax tree (Parse Tree), which represents the hierarchical structure of the program according to the grammatical rules of the language. This tree shows how each component of the program (expressions, declarations, blocks, etc.) relates to others following the grammar rules.
+- **Visualization & Tool Support**  
+  The generated executable writes pixel data into `out/image.bin`; a Python viewer memory-maps this buffer and displays it at 60 FPS with SDL 2 / Pygame, optionally mirroring over HDMI. A built-in IDE/GUI (MVC pattern) provides panels for editing, lexical/syntactic/semantic views, and real-time step execution.
 
-Semantic analysis constitutes the third stage of the process and is responsible for determining the meaning of syntactically correct constructions in the program.
-
-During this stage, it verifies that operations are performed with compatible types, that variables are declared before use, that identifiers are used consistently with their declaration, among other semantic checks.
-
-A fundamental component of semantic analysis is the symbol table, a data structure that stores information about the identifiers (variables, functions, types, etc.) declared in the program, including their type, scope, and other relevant attributes.
-
-The result of semantic analysis is an abstract syntax tree (AST), which represents the essential structure of the program, eliminating unnecessary syntactic details and preparing the information for the following stages of the process.
-
-It is worth noting that there are different methods to implement semantic verification, which gives rise to the classification of different types of compilers: single-pass compilers and two or more pass compilers. Figure 7 shows a reduced representation of both compilers.
-
-Single-pass compilers: These compilers directly connect the code generation phase with semantic analysis. Single-pass compilers are faster than two or more pass compilers, but are known to be more difficult to design and build.
-
-Two or more pass compilers: In this approach, the semantic analyzer generates abstract or intermediate code. The intermediate representation serves as a bridge for final code generation. This intermediate representation is important as it facilitates code optimization, generating efficient programs.
-
-The symbol table is a data structure that contains information about an identifier during the compilation process. The main objective of the symbol table is to collect complete information about all identifiers that appear in the source program text. This entity exists during compilation and is destroyed when the source code is translated to assembly code.
-
-The standard attributes preserved for each identifier include:
-- Identifier specification: what type of element it is (variable, function, procedure, etc.).
-- Type: identifies the data type of the identifier (integer, real, boolean, etc.).
-- Dimension or size: indicates how much memory this identifier consumes, especially important for arrays or data structures.
-- Starting address for generating object code: specifies the memory address where the identifier is located.
-- Additional information lists: includes very specific information about the identifier or the programming language.
-
-It should be mentioned that the attributes of the symbol table can vary considerably, depending on the compiled programming language, its specific characteristics, and the development methodology used to build the translator.
+By combining ANTLR 4 for parsing, llvmlite (LLVM) for IR and optimization, and SDL 2 / Pygame for live graphics, this project offers a modern, fully modular pipeline where each component can be studied, extended, or replaced—making it a comprehensive learning tool for compiler construction.
 """
         
         # Scrolling variables
