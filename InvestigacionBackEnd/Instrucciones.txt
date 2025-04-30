@@ -1,0 +1,48 @@
+Division de tareas por completar:
+=========================================================================================================
+Adriel: Itegracion de conclusiones + Desarrollo de la presentacion
+Daniel: Estudio de GCC + Integracion de esta en el documento
+Emmanuel: Estudio de LLVM + Integracion de esta en el documento
+Jose Manuel: Estudio de Bison + Integracion de esta en el documento
+
+
+Fechas limites de investigacion:
+==========================================================================================================
+5/6 -> Entregan Daniel + Emmanuel + Jose Manuel
+7/6 -> Entrega Adriel
+
+
+Donde se trabaja:
+==========================================================================================================
+Documento compartido de Latex:
+https://www.overleaf.com/7284164525pzdkprqnmkbr#61aab0
+
+
+Objetivos
+=========================================================================================================
+General: Evaluar la aplicabilidad y las capacidades de LLVM, GCC y Bison en las etapas de backend de
+un compilador y realizar una pequeña exposición de los hallazgos obtenidos.
+
+Específicos:
+• Identificar las características clave de LLVM y GCC y comparar sus funcionalidades.
+• Identificar los insumos que son necesarios y la forma de pasar esos insumos a las herramientas
+• Explorar cómo Bison se puede integrar para mejorar el análisis sintáctico y generar
+representaciones intermedias más eficientes.
+• Diseñar contextualmente casos de estudio que permitan la implementación práctica de estas
+herramientas en un compilador (NO implementar).
+• Generar conclusión del análisis de los resultados obtenidos en términos de adaptabilidad, eficiencia
+y optimización.
+• Realizar una exposición de los hallazgos obtenidos a los demás compañeros. La exposición tiene
+que tener un máximo de 15 minutos y enfocada en los objetivos específicos.
+==========================================================================================================
+
+Resultados Esperados
+==========================================================================================================
+Una mejor comprensión de cómo estas herramientas pueden utilizarse en conjunto para optimizar las etapas
+del backend de un compilador.
+
+Conclusión
+==========================================================================================================
+La investigación contribuye al desarrollo académico al ofrecer un análisis profundo de herramientas
+esenciales en el ámbito de los compiladores, proporcionando a los estudiantes una experiencia práctica y
+teórica valiosa, y que es oportuno para la elaboración del proyecto final del curso.
