@@ -671,7 +671,7 @@ class EditorView(ViewBase):
         # Nota: esta llamada no es bloqueante y devolverá inmediatamente
         FileExplorer.save_file_dialog(initial_dir=current_dir, callback=save_callback)
         return True
-
+    
     def load_file(self):
         """
         Versión ultra-robusta para cargar archivos que previene errores de índice
