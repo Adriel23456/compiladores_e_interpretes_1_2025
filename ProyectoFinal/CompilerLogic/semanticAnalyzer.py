@@ -2,30 +2,21 @@ from assets.VGraphParser import VGraphParser
 from assets.VGraphVisitor import VGraphVisitor
 from config import BASE_DIR, ASSETS_DIR, CompilerData, States
 
-
 class VariableSymbol:
-    """
-    Represents a variable symbol in the symbol table
-    """
     def __init__(self, name, vtype, initialized=False):
         self.name = name
-        self.type = vtype  # 'int', 'color', 'bool'
+        self.type = vtype
         self.initialized = initialized
         self.used = False
-
 
 class FunctionSymbol:
     def __init__(self, name, param_types):
         self.name = name
-        self.param_types = param_types  # list of types
-
+        self.param_types = param_types
 
 class SymbolTable:
-    """
-    Represents a symbol table for variable declarations and scopes
-    """
     def __init__(self):
-        self.scopes = [{}]  # stack of scopes
+        self.scopes = [{}]
         self.functions = {}
 
     def enter_scope(self):
@@ -36,7 +27,7 @@ class SymbolTable:
 
     def declare(self, name, symbol):
         if name in self.scopes[-1]:
-            return False  # already declared in current scope
+            return False
         self.scopes[-1][name] = symbol
         return True
 
@@ -45,7 +36,7 @@ class SymbolTable:
             if name in scope:
                 return scope[name]
         return None
-    
+
     def declare_function(self, name, param_types):
         if name in self.functions:
             return False
@@ -55,10 +46,8 @@ class SymbolTable:
     def get_function(self, name):
         return self.functions.get(name, None)
 
-    
     def get_all_symbols(self):
         return [symbol for scope in self.scopes for symbol in scope.values()]
-
 
 class SemanticAnalyzer(VGraphVisitor):
     def __init__(self):
@@ -66,11 +55,11 @@ class SemanticAnalyzer(VGraphVisitor):
         self.errors = []
         self.warnings = []
         self.current_function = None
-        self.ast = CompilerData.ast  # Get the AST from CompilerData
+        self.ast = CompilerData.ast
+        self.color_constants = {"rojo", "azul", "verde", "negro", "blanco"}
 
     def run(self):
         self.visit(self.ast)
-        # Save results to CompilerData
         CompilerData.semantic_errors = self.errors
         CompilerData.enhanced_symbol_table = self.symbol_table.get_all_symbols()
 
@@ -88,10 +77,8 @@ class SemanticAnalyzer(VGraphVisitor):
         return None
 
     def visitDeclaration(self, ctx: VGraphParser.DeclarationContext):
-    # Obtén el tipo desde typeDeclaration
         vtype_ctx = ctx.typeDeclaration().vartype()
         vtype = vtype_ctx.getText()
-        # Soporta declaración simple o múltiple
         if ctx.ID():
             names = [ctx.ID().getText()]
         elif ctx.idList():
@@ -110,7 +97,6 @@ class SemanticAnalyzer(VGraphVisitor):
         name = ctx.ID().getText()
         param_list = ctx.paramList()
         param_ids = [i.getText() for i in param_list.ID()] if param_list else []
-        # Por simplicidad, asume que todos los parámetros son de tipo int (ajusta según tu gramática)
         param_types = ["int"] * len(param_ids)
 
         if not self.symbol_table.declare_function(name, param_types):
@@ -145,25 +131,31 @@ class SemanticAnalyzer(VGraphVisitor):
                 symbol.initialized = True
         return None
 
-    def visitReturnStatement(self, ctx: VGraphParser.ReturnStatementContext):
+    def visitReturnStatement(self, ctx):
         if self.current_function is None:
             self.errors.append("Return statement outside of a function")
         self.evaluate_expression_type(ctx.expression())
         return None
 
     def evaluate_expression_type(self, expr):
-        # NUMBER literal
-        if hasattr(expr, "NUMBER") and expr.NUMBER():
+        ctx_name = type(expr).__name__
+
+        if ctx_name == "NumberExprContext":
+            value = expr.getText()
+            if "." in value:
+                return "float"
             return "int"
-        # BOOL literal
-        if hasattr(expr, "BOOL_CONST") and expr.BOOL_CONST():
-            return "bool"
-        # COLOR literal
-        if hasattr(expr, "COLOR_CONST") and expr.COLOR_CONST():
+
+        if ctx_name == "ColorExprContext":
             return "color"
-        # ID
-        if hasattr(expr, "ID") and expr.ID():
-            name = expr.ID().getText()
+
+        if ctx_name == "BoolLiteralExprContext":
+            return "bool"
+
+        if ctx_name == "IdExprContext":
+            name = expr.getText()
+            if name in self.color_constants:
+                return "color"
             symbol = self.symbol_table.lookup(name)
             if not symbol:
                 self.errors.append(f"Use of undeclared variable: '{name}'")
@@ -172,24 +164,29 @@ class SemanticAnalyzer(VGraphVisitor):
             if not symbol.initialized:
                 self.errors.append(f"Variable '{name}' used before initialization")
             return symbol.type
-        # Function call
-        if hasattr(expr, "functionCall") and expr.functionCall():
-            return self.visitFunctionCall(expr.functionCall())
-        # Operadores
+
+        if ctx_name in ["SinExprContext", "CosExprContext"]:
+            arg_type = self.evaluate_expression_type(expr.expr())
+            if arg_type is None:
+                return None
+            if arg_type not in ["int", "float"]:
+                self.errors.append(f"Function '{ctx_name[:-11].lower()}' expects numeric argument, got {arg_type}")
+                return None
+            return "float"
+
         if hasattr(expr, "op") and expr.op:
             left_type = self.evaluate_expression_type(expr.expr(0))
-            if expr.getChildCount() == 1:
-                if expr.op.text == '!' and left_type != 'bool':
-                    self.errors.append("Operator '!' can only be applied to boolean expressions")
-                    return None
-                return 'bool'
-            right_type = self.evaluate_expression_type(expr.expr(1))
+            right_type = self.evaluate_expression_type(expr.expr(1)) if expr.getChildCount() > 1 else None
+
+            if left_type is None or right_type is None:
+                return None
+
             op = expr.op.text
             if op in ['+', '-', '*', '/', '%']:
-                if left_type != 'int' or right_type != 'int':
+                if left_type not in ['int', 'float'] or right_type not in ['int', 'float']:
                     self.errors.append(f"Arithmetic operation not allowed between types {left_type} and {right_type}")
                     return None
-                return 'int'
+                return 'int' if left_type == right_type == 'int' else 'float'
             elif op in ['<', '>', '<=', '>=']:
                 if left_type != 'int' or right_type != 'int':
                     self.errors.append(f"Comparison not allowed between types {left_type} and {right_type}")
@@ -205,18 +202,19 @@ class SemanticAnalyzer(VGraphVisitor):
                     self.errors.append(f"Logical operation not allowed between types {left_type} and {right_type}")
                     return None
                 return 'bool'
+
         return None
 
-    def visitFunctionCall(self, ctx: VGraphParser.FunctionCallContext):
+    def visitFunctionCall(self, ctx):
         fname = ctx.ID().getText()
         args = ctx.expression()
         arg_types = [self.evaluate_expression_type(arg) for arg in args]
 
         if fname in ["cos", "sin"]:
-            if len(arg_types) != 1 or arg_types[0] != "int":
-                self.errors.append(f"Function '{fname}' expects one int argument")
+            if len(arg_types) != 1 or arg_types[0] not in ["int", "float"]:
+                self.errors.append(f"Function '{fname}' expects one numeric argument")
                 return None
-            return "int"
+            return "float"
         elif fname == "setcolor":
             if len(arg_types) != 1 or arg_types[0] != "color":
                 self.errors.append("Function 'setcolor' expects one color argument")
