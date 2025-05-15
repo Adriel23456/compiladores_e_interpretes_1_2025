@@ -63,11 +63,12 @@ class SemanticAnalyzer(VGraphVisitor):
         CompilerData.semantic_errors = self.errors
         CompilerData.enhanced_symbol_table = self.symbol_table.get_all_symbols()
 
+        for symbol in self.symbol_table.get_all_symbols():
+            if isinstance(symbol, VariableSymbol) and not symbol.used and not symbol.initialized:
+                self.warnings.append(f"Warning: variable '{symbol.name}' declared but never used")
+
     def visitProgram(self, ctx: VGraphParser.ProgramContext):
         self.visitChildren(ctx)
-        for symbol in self.symbol_table.get_all_symbols():
-            if isinstance(symbol, VariableSymbol) and not symbol.used:
-                self.warnings.append(f"Warning: variable '{symbol.name}' declared but never used")
         return None
 
     def visitBlock(self, ctx: VGraphParser.BlockContext):
