@@ -1,5 +1,6 @@
 from assets.VGraphParser import VGraphParser
 from assets.VGraphVisitor import VGraphVisitor
+from config import BASE_DIR, ASSETS_DIR, CompilerData, States
 
 
 class VariableSymbol:
@@ -59,21 +60,23 @@ class SymbolTable:
 
 
 class SemanticAnalyzer(VGraphVisitor):
-    """
-    Handles lexical analysis of code
-    """
     def __init__(self):
         self.symbol_table = SymbolTable()
         self.errors = []
         self.warnings = []
         self.current_function = None
+        self.ast = CompilerData.ast  # Get the AST from CompilerData
 
-    # Entry point: entire program
+    def run(self):
+        self.visit(self.ast)
+        # Save results to CompilerData
+        CompilerData.semantic_errors = self.errors
+        CompilerData.enhanced_symbol_table = self.symbol_table.get_all_symbols()
+
     def visitProgram(self, ctx: VGraphParser.ProgramContext):
         self.visitChildren(ctx)
-        # Check for unused variables
         for symbol in self.symbol_table.get_all_symbols():
-            if not symbol.used:
+            if isinstance(symbol, VariableSymbol) and not symbol.used:
                 self.warnings.append(f"Warning: variable '{symbol.name}' declared but never used")
         return None
 
@@ -82,22 +85,18 @@ class SemanticAnalyzer(VGraphVisitor):
         self.visitChildren(ctx)
         self.symbol_table.exit_scope()
         return None
-    
+
     def visitDeclaration(self, ctx: VGraphParser.DeclarationContext):
         vtype = ctx.TYPE().getText()
         for id_token in ctx.ID():
             name = id_token.getText()
-
-            # Identifier validation
             if not name[0].islower() or len(name) > 15:
                 self.errors.append(f"Invalid identifier: '{name}'")
                 continue
-
-            # Check for redeclaration in the same scope
             if not self.symbol_table.declare(name, VariableSymbol(name, vtype)):
                 self.errors.append(f"Redeclaration of variable: '{name}'")
         return None
-    
+
     def visitFunctionDeclaration(self, ctx: VGraphParser.FunctionDeclarationContext):
         name = ctx.ID().getText()
         param_list = ctx.parameterList()
@@ -108,17 +107,14 @@ class SemanticAnalyzer(VGraphVisitor):
             self.errors.append(f"Redeclaration of function: '{name}'")
             return None
 
-        # Enter function scope
         self.symbol_table.enter_scope()
         self.current_function = name
 
-        # Declare parameters in the new scope
         for vtype, vname in zip(param_types, param_ids):
             self.symbol_table.declare(vname, VariableSymbol(vname, vtype, initialized=True))
 
         self.visit(ctx.block())
 
-        # Exit function scope
         self.current_function = None
         self.symbol_table.exit_scope()
         return None
@@ -135,7 +131,13 @@ class SemanticAnalyzer(VGraphVisitor):
             else:
                 symbol.initialized = True
         return self.visitChildren(ctx)
-    
+
+    def visitReturnStatement(self, ctx: VGraphParser.ReturnStatementContext):
+        if self.current_function is None:
+            self.errors.append("Return statement outside of a function")
+        self.evaluate_expression_type(ctx.expression())
+        return None
+
     def evaluate_expression_type(self, expr):
         if expr.INT():
             return "int"
@@ -155,9 +157,9 @@ class SemanticAnalyzer(VGraphVisitor):
             return symbol.type
         elif expr.functionCall():
             return self.visitFunctionCall(expr.functionCall())
-        elif expr.op:  # binary or unary operation
+        elif expr.op:
             left_type = self.evaluate_expression_type(expr.expression(0))
-            if expr.getChildCount() == 1:  # unary operator (!)
+            if expr.getChildCount() == 1:
                 if expr.op.text == '!' and left_type != 'bool':
                     self.errors.append("Operator '!' can only be applied to boolean expressions")
                     return None
@@ -186,7 +188,7 @@ class SemanticAnalyzer(VGraphVisitor):
                     return None
                 return 'bool'
         return None
-    
+
     def visitFunctionCall(self, ctx: VGraphParser.FunctionCallContext):
         fname = ctx.ID().getText()
         args = ctx.expression()
@@ -207,8 +209,7 @@ class SemanticAnalyzer(VGraphVisitor):
                 self.errors.append(f"Drawing function '{fname}' expects only int arguments")
                 return None
             return None
-        
-        # User-defined function
+
         fdecl = self.symbol_table.get_function(fname)
         if not fdecl:
             self.errors.append(f"Call to undefined function '{fname}'")
