@@ -8,7 +8,8 @@ from GUI.view_base import ViewBase
 from GUI.components.button import Button
 from GUI.design_base import design
 from GUI.views.symbol_table_view import SymbolTableView
-from config import States
+from CompilerLogic.semanticAnalyzer import SemanticAnalyzer
+from config import States, CompilerData
 
 class SyntacticAnalysisView(ViewBase):
     """
@@ -195,7 +196,19 @@ class SyntacticAnalysisView(ViewBase):
             
             # Handle next button
             if self.next_button.handle_event(event):
-                print("Next button pressed - semantic analysis not implemented yet")
+                print("Running semantic analysis...")
+
+                analyzer = SemanticAnalyzer()
+                analyzer.run()
+                analyzer.reportErrors()
+
+                if CompilerData.semantic_errors:
+                    print("Semantic errors found. Returning to editor.")
+                    self.view_controller.change_state(States.EDITOR)
+                else:
+                    print("Semantic analysis passed. Ready for next stage.")
+                    # self.view_controller.change_state(States.IR_GENERATION)
+
                 return True
             
             # Handle mouse dragging for camera control

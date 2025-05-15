@@ -26,6 +26,7 @@ class SymbolTable:
     """
     def __init__(self):
         self.scopes = [{}]  # stack of scopes
+        self.functions = {}
 
     def enter_scope(self):
         self.scopes.append({})
@@ -87,9 +88,17 @@ class SemanticAnalyzer(VGraphVisitor):
         return None
 
     def visitDeclaration(self, ctx: VGraphParser.DeclarationContext):
-        vtype = ctx.TYPE().getText()
-        for id_token in ctx.ID():
-            name = id_token.getText()
+    # Obtén el tipo desde typeDeclaration
+        vtype_ctx = ctx.typeDeclaration().vartype()
+        vtype = vtype_ctx.getText()
+        # Soporta declaración simple o múltiple
+        if ctx.ID():
+            names = [ctx.ID().getText()]
+        elif ctx.idList():
+            names = [id_token.getText() for id_token in ctx.idList().ID()]
+        else:
+            names = []
+        for name in names:
             if not name[0].islower() or len(name) > 15:
                 self.errors.append(f"Invalid identifier: '{name}'")
                 continue
@@ -97,11 +106,12 @@ class SemanticAnalyzer(VGraphVisitor):
                 self.errors.append(f"Redeclaration of variable: '{name}'")
         return None
 
-    def visitFunctionDeclaration(self, ctx: VGraphParser.FunctionDeclarationContext):
+    def visitFunctionDeclStatement(self, ctx: VGraphParser.FunctionDeclStatementContext):
         name = ctx.ID().getText()
-        param_list = ctx.parameterList()
-        param_types = [t.getText() for t in param_list.TYPE()] if param_list else []
+        param_list = ctx.paramList()
         param_ids = [i.getText() for i in param_list.ID()] if param_list else []
+        # Por simplicidad, asume que todos los parámetros son de tipo int (ajusta según tu gramática)
+        param_types = ["int"] * len(param_ids)
 
         if not self.symbol_table.declare_function(name, param_types):
             self.errors.append(f"Redeclaration of function: '{name}'")
@@ -119,18 +129,21 @@ class SemanticAnalyzer(VGraphVisitor):
         self.symbol_table.exit_scope()
         return None
 
-    def visitAssignment(self, ctx: VGraphParser.AssignmentContext):
+    def visitAssignmentStatement(self, ctx: VGraphParser.AssignmentStatementContext):
+        return self.visit(ctx.assignmentExpression())
+
+    def visitAssignmentExpression(self, ctx: VGraphParser.AssignmentExpressionContext):
         name = ctx.ID().getText()
         symbol = self.symbol_table.lookup(name)
         if not symbol:
             self.errors.append(f"Undeclared variable: '{name}'")
         else:
-            expr_type = self.evaluate_expression_type(ctx.expression())
+            expr_type = self.evaluate_expression_type(ctx.expr())
             if expr_type and expr_type != symbol.type:
                 self.errors.append(f"Type mismatch: cannot assign {expr_type} to variable '{name}' of type {symbol.type}")
             else:
                 symbol.initialized = True
-        return self.visitChildren(ctx)
+        return None
 
     def visitReturnStatement(self, ctx: VGraphParser.ReturnStatementContext):
         if self.current_function is None:
@@ -139,13 +152,17 @@ class SemanticAnalyzer(VGraphVisitor):
         return None
 
     def evaluate_expression_type(self, expr):
-        if expr.INT():
+        # NUMBER literal
+        if hasattr(expr, "NUMBER") and expr.NUMBER():
             return "int"
-        elif expr.BOOL():
+        # BOOL literal
+        if hasattr(expr, "BOOL_CONST") and expr.BOOL_CONST():
             return "bool"
-        elif expr.COLOR():
+        # COLOR literal
+        if hasattr(expr, "COLOR_CONST") and expr.COLOR_CONST():
             return "color"
-        elif expr.ID():
+        # ID
+        if hasattr(expr, "ID") and expr.ID():
             name = expr.ID().getText()
             symbol = self.symbol_table.lookup(name)
             if not symbol:
@@ -155,18 +172,19 @@ class SemanticAnalyzer(VGraphVisitor):
             if not symbol.initialized:
                 self.errors.append(f"Variable '{name}' used before initialization")
             return symbol.type
-        elif expr.functionCall():
+        # Function call
+        if hasattr(expr, "functionCall") and expr.functionCall():
             return self.visitFunctionCall(expr.functionCall())
-        elif expr.op:
-            left_type = self.evaluate_expression_type(expr.expression(0))
+        # Operadores
+        if hasattr(expr, "op") and expr.op:
+            left_type = self.evaluate_expression_type(expr.expr(0))
             if expr.getChildCount() == 1:
                 if expr.op.text == '!' and left_type != 'bool':
                     self.errors.append("Operator '!' can only be applied to boolean expressions")
                     return None
                 return 'bool'
-            right_type = self.evaluate_expression_type(expr.expression(1))
+            right_type = self.evaluate_expression_type(expr.expr(1))
             op = expr.op.text
-
             if op in ['+', '-', '*', '/', '%']:
                 if left_type != 'int' or right_type != 'int':
                     self.errors.append(f"Arithmetic operation not allowed between types {left_type} and {right_type}")
