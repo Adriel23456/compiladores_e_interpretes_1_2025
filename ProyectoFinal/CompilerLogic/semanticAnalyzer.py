@@ -1,6 +1,8 @@
 from assets.VGraphParser import VGraphParser
 from assets.VGraphVisitor import VGraphVisitor
 from config import BASE_DIR, ASSETS_DIR, CompilerData, States
+import pydot
+import os
 
 class VariableSymbol:
     def __init__(self, name, vtype, initialized=False):
@@ -57,11 +59,20 @@ class SemanticAnalyzer(VGraphVisitor):
         self.current_function = None
         self.ast = CompilerData.ast
         self.color_constants = {"rojo", "azul", "verde", "negro", "blanco"}
+        self.enriched_tree = {}
+
+        images_dir = os.path.join(ASSETS_DIR, "Images")
+        if not os.path.exists(images_dir):
+            os.makedirs(images_dir)
+        self.semantic_tree_path = os.path.join(images_dir, "semantic_tree.png")
 
     def run(self):
         self.visit(self.ast)
         CompilerData.semantic_errors = self.errors
         CompilerData.enhanced_symbol_table = self.symbol_table.get_all_symbols()
+        CompilerData.semantic_tree = self.enriched_tree
+        self.generate_semantic_tree_image(self.semantic_tree_path)
+        CompilerData.semantic_tree_path = self.semantic_tree_path
 
         for symbol in self.symbol_table.get_all_symbols():
             if isinstance(symbol, VariableSymbol) and not symbol.used and not symbol.initialized:
@@ -127,7 +138,12 @@ class SemanticAnalyzer(VGraphVisitor):
         else:
             expr_type = self.evaluate_expression_type(ctx.expr())
             if expr_type and expr_type != symbol.type:
-                self.errors.append(f"Type mismatch: cannot assign {expr_type} to variable '{name}' of type {symbol.type}")
+            # Permitir asignar float a int si hay una conversión implícita
+                if symbol.type == "int" and expr_type == "float":
+                    self.warnings.append(f"Implicit cast from float to int in assignment to '{name}'")
+                    symbol.initialized = True
+                    return None
+                    self.errors.append(f"Type mismatch: cannot assign {expr_type} to variable '{name}' of type {symbol.type}")
             else:
                 symbol.initialized = True
         return None
@@ -139,45 +155,56 @@ class SemanticAnalyzer(VGraphVisitor):
         return None
 
     def evaluate_expression_type(self, expr):
+        # Manejo de casting explícito (por ejemplo, (int)(expresion))
+        if hasattr(expr, 'typeCast') and expr.typeCast():
+            target_type = expr.typeCast().getText()
+            inner_expr = expr.expr()
+            inner_type = self.evaluate_expression_type(inner_expr)
+            if target_type == "int" and inner_type == "float":
+                return "int"
+            elif target_type == inner_type:
+                return target_type
+            else:
+                self.errors.append(f"Invalid cast from {inner_type} to {target_type}")
+                return None
         ctx_name = type(expr).__name__
+        node_id = str(id(expr))
+
+        children = []
+        inferred_type = None
 
         if ctx_name == "NumberExprContext":
-            value = expr.getText()
-            if "." in value:
-                return "float"
-            return "int"
-
-        if ctx_name == "ColorExprContext":
-            return "color"
-
-        if ctx_name == "BoolLiteralExprContext":
-            return "bool"
-
-        if ctx_name == "IdExprContext":
+            inferred_type = "float" if "." in expr.getText() else "int"
+        elif ctx_name == "ColorExprContext":
+            inferred_type = "color"
+        elif ctx_name == "BoolLiteralExprContext":
+            inferred_type = "bool"
+        elif ctx_name == "IdExprContext":
             name = expr.getText()
             if name in self.color_constants:
-                return "color"
-            symbol = self.symbol_table.lookup(name)
-            if not symbol:
-                self.errors.append(f"Use of undeclared variable: '{name}'")
-                return None
-            symbol.used = True
-            if not symbol.initialized:
-                self.errors.append(f"Variable '{name}' used before initialization")
-            return symbol.type
-
-        if ctx_name in ["SinExprContext", "CosExprContext"]:
+                inferred_type = "color"
+            else:
+                symbol = self.symbol_table.lookup(name)
+                if not symbol:
+                    self.errors.append(f"Use of undeclared variable: '{name}'")
+                    return None
+                symbol.used = True
+                if not symbol.initialized:
+                    self.errors.append(f"Variable '{name}' used before initialization")
+                inferred_type = symbol.type
+        elif ctx_name in ["SinExprContext", "CosExprContext"]:
             arg_type = self.evaluate_expression_type(expr.expr())
-            if arg_type is None:
-                return None
+            children.append(str(id(expr.expr())))
             if arg_type not in ["int", "float"]:
                 self.errors.append(f"Function '{ctx_name[:-11].lower()}' expects numeric argument, got {arg_type}")
                 return None
-            return "float"
-
-        if hasattr(expr, "op") and expr.op:
+            inferred_type = "float"
+        elif hasattr(expr, "op") and expr.op:
             left_type = self.evaluate_expression_type(expr.expr(0))
             right_type = self.evaluate_expression_type(expr.expr(1)) if expr.getChildCount() > 1 else None
+            children.extend([str(id(expr.expr(0)))])
+            if expr.getChildCount() > 1:
+                children.extend([str(id(expr.expr(1)))])
 
             if left_type is None or right_type is None:
                 return None
@@ -187,24 +214,32 @@ class SemanticAnalyzer(VGraphVisitor):
                 if left_type not in ['int', 'float'] or right_type not in ['int', 'float']:
                     self.errors.append(f"Arithmetic operation not allowed between types {left_type} and {right_type}")
                     return None
-                return 'int' if left_type == right_type == 'int' else 'float'
+                inferred_type = 'int' if left_type == right_type == 'int' else 'float'
             elif op in ['<', '>', '<=', '>=']:
                 if left_type != 'int' or right_type != 'int':
                     self.errors.append(f"Comparison not allowed between types {left_type} and {right_type}")
                     return None
-                return 'bool'
+                inferred_type = 'bool'
             elif op in ['==', '!=']:
                 if left_type != right_type:
                     self.errors.append(f"Equality comparison between different types: {left_type} and {right_type}")
                     return None
-                return 'bool'
+                inferred_type = 'bool'
             elif op in ['&&', '||']:
                 if left_type != 'bool' or right_type != 'bool':
                     self.errors.append(f"Logical operation not allowed between types {left_type} and {right_type}")
                     return None
-                return 'bool'
+                inferred_type = 'bool'
 
-        return None
+        if inferred_type:
+            self.enriched_tree[node_id] = {
+                "text": expr.getText(),
+                "type": inferred_type,
+                "ctx": ctx_name,
+                "children": children
+            }
+
+        return inferred_type
 
     def visitFunctionCall(self, ctx):
         fname = ctx.ID().getText()
@@ -239,6 +274,16 @@ class SemanticAnalyzer(VGraphVisitor):
                 self.errors.append(f"Function '{fname}' argument type mismatch: expected {expected}, got {actual}")
                 return None
         return None
+
+    def generate_semantic_tree_image(self, output_path):
+        graph = pydot.Dot(graph_type='digraph', rankdir='TB')
+        for node_id, data in self.enriched_tree.items():
+            label = f"{data['ctx']}\n{data['text']}\n{data['type']}"
+            graph.add_node(pydot.Node(node_id, label=label, shape='box'))
+        for node_id, data in self.enriched_tree.items():
+            for child in data.get('children', []):
+                graph.add_edge(pydot.Edge(node_id, child))
+        graph.write_png(output_path)
 
     def reportErrors(self):
         if not self.errors:

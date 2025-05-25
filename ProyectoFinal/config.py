@@ -97,20 +97,22 @@ class CompilerData:
     symbol_table_path = None
     semantic_graph_path = None
     enhanced_symbol_table_path = None
+    semantic_tree_path = None
     
     # Datos del análisis léxico
     tokens = []
     lexical_errors = []
     
     # Datos del análisis sintáctico
+    syntactic_errors = []
     ast = None  # Abstract Syntax Tree
     parser = None  # Parser reference (needed for tree traversal)
     symbol_table = {}  # Tabla de símbolos inicial
-    syntactic_errors = []
     
     # Datos del análisis semántico
     semantic_errors = []
     enhanced_symbol_table = {}  # Tabla de símbolos con información de tipos
+    semantic_tree = {}
     
     @staticmethod
     def reset_lexical():
@@ -136,6 +138,8 @@ class CompilerData:
         CompilerData.enhanced_symbol_table = {}
         CompilerData.semantic_graph_path = None
         CompilerData.enhanced_symbol_table_path = None
+        CompilerData.semantic_tree_path = None
+        CompilerData.semantic_tree = None
     
     @staticmethod
     def reset_all():

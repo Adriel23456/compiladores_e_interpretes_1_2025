@@ -1,26 +1,23 @@
 """
 Syntactic Analysis View for the Full Stack Compiler
-Displays the parse tree and provides access to symbol table
+Displays the semantic tree and provides access to symbol table
 """
 import pygame
 import os
 from GUI.view_base import ViewBase
 from GUI.components.button import Button
 from GUI.design_base import design
-from GUI.views.symbol_table_view import SymbolTableView
-from CompilerLogic.semanticAnalyzer import SemanticAnalyzer
 from config import States, CompilerData
 
-class SyntacticAnalysisView(ViewBase):
+class SemanticAnalysisView(ViewBase):
     """
     View for displaying syntactic analysis results
     """
-    def __init__(self, view_controller, editor_view=None, parse_tree_path=None, symbol_table_path=None):
+    def __init__(self, view_controller, editor_view=None, semantic_tree_path=None):
         super().__init__(view_controller)
         self.editor_view = editor_view
-        self.parse_tree_path = parse_tree_path
-        self.symbol_table_path = symbol_table_path
-        self.parse_tree_surface = None
+        self.semantic_tree_path = semantic_tree_path
+        self.semantic_tree_surface = None
         
         # Camera position for navigation (center of view in image coordinates)
         self.camera_x = 0
@@ -37,7 +34,6 @@ class SyntacticAnalysisView(ViewBase):
         self.original_width = 0
         self.original_height = 0
         
-        self.symbol_table_view = None
         self.is_dragging = False
         self.last_mouse_x = 0
         self.last_mouse_y = 0
@@ -62,14 +58,6 @@ class SyntacticAnalysisView(ViewBase):
             "Back to Home"
         )
         
-        # Create symbol table button (bottom center)
-        symbol_button_x = (screen_width - button_width) // 2
-        self.symbol_table_button = Button(
-            pygame.Rect(symbol_button_x, screen_height - button_height - bottom_margin, 
-                       button_width, button_height),
-            "Symbol Table"
-        )
-        
         # Create next button (bottom right)
         self.next_button = Button(
             pygame.Rect(screen_width - button_width - button_margin, 
@@ -80,28 +68,28 @@ class SyntacticAnalysisView(ViewBase):
             fixed_height=button_height
         )
         
-        # Full display area for parse tree
+        # Full display area for semantic tree
         display_height = screen_height - title_height - button_height - bottom_margin - button_margin
         
-        # Parse tree display area - full width
-        self.parse_tree_rect = pygame.Rect(
+        # semantic tree display area - full width
+        self.semantic_tree_rect = pygame.Rect(
             button_margin, 
             title_height,
             screen_width - 2 * button_margin,
             display_height
         )
         
-        # Load parse tree image
-        self.load_parse_tree()
+        # Load semantic tree image
+        self.load_semantic_tree()
     
-    def load_parse_tree(self):
-        if self.parse_tree_path and os.path.exists(self.parse_tree_path):
+    def load_semantic_tree(self):
+        if self.semantic_tree_path and os.path.exists(self.semantic_tree_path):
             try:
-                self.parse_tree_surface = pygame.image.load(self.parse_tree_path)
+                self.semantic_tree_surface = pygame.image.load(self.semantic_tree_path)
                 
                 # Store original dimensions
-                self.original_width = self.parse_tree_surface.get_width()
-                self.original_height = self.parse_tree_surface.get_height()
+                self.original_width = self.semantic_tree_surface.get_width()
+                self.original_height = self.semantic_tree_surface.get_height()
                 
                 # Calculate initial scale factor to fit the view rect
                 self.calculate_scale_factor()
@@ -114,31 +102,31 @@ class SyntacticAnalysisView(ViewBase):
                 self.update_camera_limits()
                 
             except Exception as e:
-                print(f"Error loading parse tree image: {e}")
-                self.parse_tree_surface = self.create_placeholder_image("Error loading parse tree image")
+                print(f"Error loading semantic tree image: {e}")
+                self.semantic_tree_surface = self.create_placeholder_image("Error loading semantic tree image")
         else:
-            self.parse_tree_surface = self.create_placeholder_image("Parse tree image not available")
+            self.semantic_tree_surface = self.create_placeholder_image("semantic tree image not available")
     
     def calculate_scale_factor(self):
-        """Calculate scale factor to fit the parse tree in the view rect"""
-        if not self.parse_tree_surface or not hasattr(self, 'parse_tree_rect'):
+        """Calculate scale factor to fit the semantic tree in the view rect"""
+        if not self.semantic_tree_surface or not hasattr(self, 'semantic_tree_rect'):
             return
             
         # Calculate scale factor to fit the view rect while maintaining aspect ratio
-        width_ratio = self.parse_tree_rect.width / self.original_width
-        height_ratio = self.parse_tree_rect.height / self.original_height
+        width_ratio = self.semantic_tree_rect.width / self.original_width
+        height_ratio = self.semantic_tree_rect.height / self.original_height
         
         # Use the smallest ratio to ensure the image fits completely
         self.scale_factor = min(width_ratio, height_ratio) * 0.9  # 90% to leave some margin
     
     def update_camera_limits(self):
         """Update camera limits based on current scale factor"""
-        if not self.parse_tree_surface:
+        if not self.semantic_tree_surface:
             return
         
         # Calculate half of the view size in image coordinates
-        view_width_half = self.parse_tree_rect.width / (2 * self.scale_factor)
-        view_height_half = self.parse_tree_rect.height / (2 * self.scale_factor)
+        view_width_half = self.semantic_tree_rect.width / (2 * self.scale_factor)
+        view_height_half = self.semantic_tree_rect.height / (2 * self.scale_factor)
         
         # Set camera limits to allow the full image to be viewed
         # The camera position represents the center of the view in image coordinates
@@ -167,11 +155,6 @@ class SyntacticAnalysisView(ViewBase):
         return surface
     
     def handle_events(self, events):
-        # Handle symbol table view first if active
-        if self.symbol_table_view:
-            if self.symbol_table_view.handle_events(events):
-                return True
-            return True
         
         # Check if we're already dragging before processing events
         mouse_buttons = pygame.mouse.get_pressed()
@@ -189,32 +172,23 @@ class SyntacticAnalysisView(ViewBase):
                 self.view_controller.change_state(States.EDITOR)
                 return True
             
-            # Handle symbol table button
-            if self.symbol_table_button.handle_event(event):
-                self.show_symbol_table_view()
-                return True
             
             # Handle next button
             if self.next_button.handle_event(event):
-                print("Running semantic analysis...")
-
-                analyzer = SemanticAnalyzer()
-                analyzer.run()
-                analyzer.reportErrors()
+                print("Running IR representation...")
 
                 if CompilerData.semantic_errors:
-                    print("Semantic errors found. Returning to editor.")
+                    print("Returning to editor.")
                     self.view_controller.change_state(States.EDITOR)
                 else:
-                    print("Semantic analysis passed. Ready for next stage.")
-                    self.view_controller.semantic_tree_path = CompilerData.semantic_tree_path
-                    self.view_controller.change_state(States.SEMANTIC_ANALYSIS)
+                    print("Ready for next stage.")
+                    self.view_controller.change_state(States.EDITOR)
 
                 return True
             
             # Handle mouse dragging for camera control
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.parse_tree_rect.collidepoint(event.pos):
+                if self.semantic_tree_rect.collidepoint(event.pos):
                     self.is_dragging = True
                     self.last_mouse_x = event.pos[0]
                     self.last_mouse_y = event.pos[1]
@@ -229,7 +203,7 @@ class SyntacticAnalysisView(ViewBase):
             
             # Handle zooming with mousewheel
             elif event.type == pygame.MOUSEWHEEL:
-                if self.parse_tree_rect.collidepoint(pygame.mouse.get_pos()):
+                if self.semantic_tree_rect.collidepoint(pygame.mouse.get_pos()):
                     # Save old scale for calculating camera adjustment
                     old_scale = self.scale_factor
                     
@@ -279,7 +253,7 @@ class SyntacticAnalysisView(ViewBase):
                     return True
                 else:
                     # Update cursor based on hover
-                    if self.parse_tree_rect.collidepoint(event.pos):
+                    if self.semantic_tree_rect.collidepoint(event.pos):
                         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
                     else:
                         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
@@ -293,8 +267,6 @@ class SyntacticAnalysisView(ViewBase):
         return False
     
     def update(self, dt):
-        if self.symbol_table_view:
-            self.symbol_table_view.update(dt)
             
         # Check if window size has changed and recalculate
         current_rect = self.screen.get_rect()
@@ -312,18 +284,18 @@ class SyntacticAnalysisView(ViewBase):
         
         # Draw title
         title_font = design.get_font("large")
-        title_text = title_font.render("Syntactic Analysis - Parse Tree", True, design.colors["text"])
+        title_text = title_font.render("Syntactic Analysis - semantic Tree", True, design.colors["text"])
         title_rect = title_text.get_rect(centerx=self.screen_rect.centerx, top=15)
         self.screen.blit(title_text, title_rect)
         
-        # Draw parse tree area
-        pygame.draw.rect(self.screen, (255, 255, 255), self.parse_tree_rect)
-        pygame.draw.rect(self.screen, design.colors["textbox_border"], self.parse_tree_rect, 1)
+        # Draw semantic tree area
+        pygame.draw.rect(self.screen, (255, 255, 255), self.semantic_tree_rect)
+        pygame.draw.rect(self.screen, design.colors["textbox_border"], self.semantic_tree_rect, 1)
         
-        if self.parse_tree_surface:
+        if self.semantic_tree_surface:
             try:
                 # Create a subsurface of the screen for the image area to clip the content
-                image_view = self.screen.subsurface(self.parse_tree_rect)
+                image_view = self.screen.subsurface(self.semantic_tree_rect)
                 
                 # Calculate scaled dimensions
                 scaled_width = int(self.original_width * self.scale_factor)
@@ -332,32 +304,20 @@ class SyntacticAnalysisView(ViewBase):
                 # Create a scaled surface with current scale factor
                 # Using smoothscale for better quality
                 scaled_surface = pygame.transform.smoothscale(
-                    self.parse_tree_surface, (scaled_width, scaled_height)
+                    self.semantic_tree_surface, (scaled_width, scaled_height)
                 )
                 
                 # Calculate position to center the view - this is the key change
                 # We use the camera position as the center of our view
-                view_x = (self.parse_tree_rect.width / 2) - (self.camera_x * self.scale_factor)
-                view_y = (self.parse_tree_rect.height / 2) - (self.camera_y * self.scale_factor)
+                view_x = (self.semantic_tree_rect.width / 2) - (self.camera_x * self.scale_factor)
+                view_y = (self.semantic_tree_rect.height / 2) - (self.camera_y * self.scale_factor)
                 
                 # Blit the image with calculated position
                 image_view.blit(scaled_surface, (view_x, view_y))
                 
             except Exception as e:
-                print(f"Error rendering parse tree: {e}")
+                print(f"Error rendering semantic tree: {e}")
         
         # Draw buttons
         self.back_button.render(self.screen)
-        self.symbol_table_button.render(self.screen)
         self.next_button.render(self.screen)
-        
-        # Render symbol table view if active
-        if self.symbol_table_view:
-            self.symbol_table_view.render()
-    
-    def show_symbol_table_view(self):
-        self.symbol_table_view = SymbolTableView(self, self.symbol_table_path, 
-                                                on_close=self.close_symbol_table_view)
-    
-    def close_symbol_table_view(self):
-        self.symbol_table_view = None
