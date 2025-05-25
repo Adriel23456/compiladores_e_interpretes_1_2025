@@ -207,6 +207,7 @@ class SyntacticAnalysisView(ViewBase):
                     self.view_controller.change_state(States.EDITOR)
                 else:
                     print("Semantic analysis passed. Ready for next stage.")
+                    self.view_controller.semantic_tree_path = CompilerData.semantic_tree_path
                     self.view_controller.change_state(States.SEMANTIC_ANALYSIS)
 
                 return True
