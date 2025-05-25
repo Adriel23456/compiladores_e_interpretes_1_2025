@@ -1,6 +1,8 @@
 from assets.VGraphParser import VGraphParser
 from assets.VGraphVisitor import VGraphVisitor
 from config import BASE_DIR, ASSETS_DIR, CompilerData, States
+import pydot
+import os
 
 class VariableSymbol:
     def __init__(self, name, vtype, initialized=False):
@@ -57,25 +59,20 @@ class SemanticAnalyzer(VGraphVisitor):
         self.current_function = None
         self.ast = CompilerData.ast
         self.color_constants = {"rojo", "azul", "verde", "negro", "blanco"}
+        self.enriched_tree = {}
+
+        images_dir = os.path.join(ASSETS_DIR, "Images")
+        if not os.path.exists(images_dir):
+            os.makedirs(images_dir)
+        self.semantic_tree_path = os.path.join(images_dir, "semantic_tree.png")
 
     def run(self):
         self.visit(self.ast)
         CompilerData.semantic_errors = self.errors
         CompilerData.enhanced_symbol_table = self.symbol_table.get_all_symbols()
-
-        for symbol in self.symbol_table.get_all_symbols():
-            if isinstance(symbol, VariableSymbol) and not symbol.used and not symbol.initialized:
-                self.warnings.append(f"Warning: variable '{symbol.name}' declared but never used")
-
-    def visitProgram(self, ctx: VGraphParser.ProgramContext):
-        self.visitChildren(ctx)
-        return None
-
-    def visitBlock(self, ctx: VGraphParser.BlockContext):
-        self.symbol_table.enter_scope()
-        self.visitChildren(ctx)
-        self.symbol_table.exit_scope()
-        return None
+        CompilerData.semantic_tree = self.enriched_tree
+        self.generate_semantic_tree_image(self.semantic_tree_path)
+        CompilerData.semantic_tree_path = self.semantic_tree_path
 
     def visitDeclaration(self, ctx: VGraphParser.DeclarationContext):
         vtype_ctx = ctx.typeDeclaration().vartype()
@@ -94,31 +91,6 @@ class SemanticAnalyzer(VGraphVisitor):
                 self.errors.append(f"Redeclaration of variable: '{name}'")
         return None
 
-    def visitFunctionDeclStatement(self, ctx: VGraphParser.FunctionDeclStatementContext):
-        name = ctx.ID().getText()
-        param_list = ctx.paramList()
-        param_ids = [i.getText() for i in param_list.ID()] if param_list else []
-        param_types = ["int"] * len(param_ids)
-
-        if not self.symbol_table.declare_function(name, param_types):
-            self.errors.append(f"Redeclaration of function: '{name}'")
-            return None
-
-        self.symbol_table.enter_scope()
-        self.current_function = name
-
-        for vtype, vname in zip(param_types, param_ids):
-            self.symbol_table.declare(vname, VariableSymbol(vname, vtype, initialized=True))
-
-        self.visit(ctx.block())
-
-        self.current_function = None
-        self.symbol_table.exit_scope()
-        return None
-
-    def visitAssignmentStatement(self, ctx: VGraphParser.AssignmentStatementContext):
-        return self.visit(ctx.assignmentExpression())
-
     def visitAssignmentExpression(self, ctx: VGraphParser.AssignmentExpressionContext):
         name = ctx.ID().getText()
         symbol = self.symbol_table.lookup(name)
@@ -132,113 +104,56 @@ class SemanticAnalyzer(VGraphVisitor):
                 symbol.initialized = True
         return None
 
-    def visitReturnStatement(self, ctx):
-        if self.current_function is None:
-            self.errors.append("Return statement outside of a function")
-        self.evaluate_expression_type(ctx.expression())
-        return None
-
     def evaluate_expression_type(self, expr):
         ctx_name = type(expr).__name__
+        node_id = str(id(expr))
 
+        children = []
+        if hasattr(expr, 'expr'):
+            expr_children = expr.expr()
+            if not isinstance(expr_children, list):
+                expr_children = [expr_children]
+            for child in expr_children:
+                if child:
+                    self.evaluate_expression_type(child)
+                    children.append(str(id(child)))
+
+        inferred_type = "unknown"
         if ctx_name == "NumberExprContext":
             value = expr.getText()
-            if "." in value:
-                return "float"
-            return "int"
-
-        if ctx_name == "ColorExprContext":
-            return "color"
-
-        if ctx_name == "BoolLiteralExprContext":
-            return "bool"
-
-        if ctx_name == "IdExprContext":
+            inferred_type = "float" if "." in value else "int"
+        elif ctx_name == "ColorExprContext":
+            inferred_type = "color"
+        elif ctx_name == "BoolLiteralExprContext":
+            inferred_type = "bool"
+        elif ctx_name == "IdExprContext":
             name = expr.getText()
-            if name in self.color_constants:
-                return "color"
             symbol = self.symbol_table.lookup(name)
             if not symbol:
                 self.errors.append(f"Use of undeclared variable: '{name}'")
-                return None
-            symbol.used = True
-            if not symbol.initialized:
-                self.errors.append(f"Variable '{name}' used before initialization")
-            return symbol.type
+            else:
+                symbol.used = True
+                if not symbol.initialized:
+                    self.errors.append(f"Variable '{name}' used before initialization")
+                inferred_type = symbol.type
 
-        if ctx_name in ["SinExprContext", "CosExprContext"]:
-            arg_type = self.evaluate_expression_type(expr.expr())
-            if arg_type is None:
-                return None
-            if arg_type not in ["int", "float"]:
-                self.errors.append(f"Function '{ctx_name[:-11].lower()}' expects numeric argument, got {arg_type}")
-                return None
-            return "float"
+        self.enriched_tree[node_id] = {
+            "text": expr.getText(),
+            "type": inferred_type,
+            "ctx": ctx_name,
+            "children": children
+        }
+        return inferred_type
 
-        if hasattr(expr, "op") and expr.op:
-            left_type = self.evaluate_expression_type(expr.expr(0))
-            right_type = self.evaluate_expression_type(expr.expr(1)) if expr.getChildCount() > 1 else None
-
-            if left_type is None or right_type is None:
-                return None
-
-            op = expr.op.text
-            if op in ['+', '-', '*', '/', '%']:
-                if left_type not in ['int', 'float'] or right_type not in ['int', 'float']:
-                    self.errors.append(f"Arithmetic operation not allowed between types {left_type} and {right_type}")
-                    return None
-                return 'int' if left_type == right_type == 'int' else 'float'
-            elif op in ['<', '>', '<=', '>=']:
-                if left_type != 'int' or right_type != 'int':
-                    self.errors.append(f"Comparison not allowed between types {left_type} and {right_type}")
-                    return None
-                return 'bool'
-            elif op in ['==', '!=']:
-                if left_type != right_type:
-                    self.errors.append(f"Equality comparison between different types: {left_type} and {right_type}")
-                    return None
-                return 'bool'
-            elif op in ['&&', '||']:
-                if left_type != 'bool' or right_type != 'bool':
-                    self.errors.append(f"Logical operation not allowed between types {left_type} and {right_type}")
-                    return None
-                return 'bool'
-
-        return None
-
-    def visitFunctionCall(self, ctx):
-        fname = ctx.ID().getText()
-        args = ctx.expression()
-        arg_types = [self.evaluate_expression_type(arg) for arg in args]
-
-        if fname in ["cos", "sin"]:
-            if len(arg_types) != 1 or arg_types[0] not in ["int", "float"]:
-                self.errors.append(f"Function '{fname}' expects one numeric argument")
-                return None
-            return "float"
-        elif fname == "setcolor":
-            if len(arg_types) != 1 or arg_types[0] != "color":
-                self.errors.append("Function 'setcolor' expects one color argument")
-                return None
-            return None
-        elif fname.startswith("draw"):
-            if not all(arg == "int" for arg in arg_types):
-                self.errors.append(f"Drawing function '{fname}' expects only int arguments")
-                return None
-            return None
-
-        fdecl = self.symbol_table.get_function(fname)
-        if not fdecl:
-            self.errors.append(f"Call to undefined function '{fname}'")
-            return None
-        if len(arg_types) != len(fdecl.param_types):
-            self.errors.append(f"Function '{fname}' expects {len(fdecl.param_types)} arguments but got {len(arg_types)}")
-            return None
-        for expected, actual in zip(fdecl.param_types, arg_types):
-            if expected != actual:
-                self.errors.append(f"Function '{fname}' argument type mismatch: expected {expected}, got {actual}")
-                return None
-        return None
+    def generate_semantic_tree_image(self, output_path):
+        graph = pydot.Dot(graph_type='digraph', rankdir='TB')
+        for node_id, data in self.enriched_tree.items():
+            label = f"{data['ctx']}\n{data['text']}\n{data['type']}"
+            graph.add_node(pydot.Node(node_id, label=label, shape='box'))
+        for node_id, data in self.enriched_tree.items():
+            for child in data.get('children', []):
+                graph.add_edge(pydot.Edge(node_id, child))
+        graph.write_png(output_path)
 
     def reportErrors(self):
         if not self.errors:

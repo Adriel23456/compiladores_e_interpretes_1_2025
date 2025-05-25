@@ -111,6 +111,7 @@ class CompilerData:
     # Datos del análisis semántico
     semantic_errors = []
     enhanced_symbol_table = {}  # Tabla de símbolos con información de tipos
+    enriched_tree = {}
     
     @staticmethod
     def reset_lexical():
@@ -136,6 +137,7 @@ class CompilerData:
         CompilerData.enhanced_symbol_table = {}
         CompilerData.semantic_graph_path = None
         CompilerData.enhanced_symbol_table_path = None
+        CompilerData.enriched_tree = None
     
     @staticmethod
     def reset_all():
