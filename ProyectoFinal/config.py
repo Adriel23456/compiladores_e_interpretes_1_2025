@@ -24,6 +24,9 @@ class States:
     LEXICAL_ANALYSIS = "LEXICAL_ANALYSIS"  #1st compilation state
     SYNTACTIC_ANALYSIS = "SYNTACTIC_ANALYSIS" #2nd compilation state
     SEMANTIC_ANALYSIS = "SEMANTIC_ANALYSIS" #3rd compilation state
+    IR_CODE_VIEW = "IR_CODE_VIEW" #4th compilation state
+    IR_OPTIMIZED = "IR_OPTIMIZED" #5th compilation state
+    
 
 # Font size configurations
 # Tamaños para la opción "small"
@@ -98,6 +101,8 @@ class CompilerData:
     semantic_graph_path = None
     enhanced_symbol_table_path = None
     semantic_tree_path = None
+    ir_raw = None
+    ir_optimized = None
     
     # Datos del análisis léxico
     tokens = []

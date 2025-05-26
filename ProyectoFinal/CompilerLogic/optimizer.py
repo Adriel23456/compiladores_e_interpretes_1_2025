@@ -21,18 +21,29 @@ class Optimizer:
     @staticmethod
     def _build_passmanager(opt_level: int = 2) -> llvm.ModulePassManager:
         """
-        Crea un pass manager equivalente a `opt -O<opt_level>`.
-        Para -O2/-Os típicos basta con InstructionCombining + GVN + CFGSimpl.
+        Construye y retorna un ModulePassManager con la configuración
+        de optimización correspondiente al nivel -O0, -O1, -O2 o -O3.
         """
         pmb = llvm.create_pass_manager_builder()
-        pmb.opt_level  = opt_level          # 0–3
-        pmb.size_level = 0                  # 0: normal, 1: -Os, 2: -Oz
-        pmb.loop_vectorize = True
-        pmb.slp_vectorize  = True
+        pmb.opt_level = opt_level              # Nivel de optimización (0‒3)
+        pmb.size_level = 0                     # 0: normal; 1: -Os, 2: -Oz
+
+        # Activar vectorización solo para -O2 y -O3
+        if opt_level >= 2:
+            pmb.loop_vectorize = True
+            pmb.slp_vectorize = True
+        else:
+            pmb.loop_vectorize = False
+            pmb.slp_vectorize = False
+
+        # Inlining más agresivo en -O3 (como lo haría opt -O3)
+        if opt_level == 3 and hasattr(pmb, 'inliner_threshold'):
+            pmb.inliner_threshold = 275   # Aumenta el umbral de inlining
 
         pm = llvm.ModulePassManager()
         pmb.populate(pm)
         return pm
+
 
     # -----------------------------------------------------------------
     @classmethod

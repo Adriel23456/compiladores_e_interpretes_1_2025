@@ -11,6 +11,8 @@ from GUI.views.editor_view import EditorView
 from GUI.views.lexical_analysis_view import LexicalAnalysisView
 from GUI.views.syntactic_analysis_view import SyntacticAnalysisView
 from GUI.views.semantic_analysis_view import SemanticAnalysisView
+from GUI.views.ir_view import IRCodeView
+from GUI.views.optimizer_view import OptimizerView
 from GUI.design_base import design
 
 def main():
@@ -49,6 +51,8 @@ def main():
         controller.add_state(States.LEXICAL_ANALYSIS, LexicalAnalysisView)
         controller.add_state(States.SYNTACTIC_ANALYSIS, SyntacticAnalysisView)
         controller.add_state(States.SEMANTIC_ANALYSIS, SemanticAnalysisView)
+        controller.add_state(States.IR_CODE_VIEW, IRCodeView)
+        controller.add_state(States.IR_OPTIMIZED, OptimizerView)  # Reuse IRCodeView for optimized view
         
         # Set initial state to Editor
         controller.set_initial_state(States.EDITOR)

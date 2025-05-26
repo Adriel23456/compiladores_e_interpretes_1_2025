@@ -6,8 +6,11 @@ import pygame
 import os
 from GUI.view_base import ViewBase
 from GUI.components.button import Button
+from GUI.components.pop_up_dialog import PopupDialog
 from GUI.design_base import design
 from config import States, CompilerData
+from CompilerLogic.intermediateCodeGenerator import IntermediateCodeGenerator
+
 
 class SemanticAnalysisView(ViewBase):
     """
@@ -175,15 +178,28 @@ class SemanticAnalysisView(ViewBase):
             
             # Handle next button
             if self.next_button.handle_event(event):
-                print("Running IR representation...")
-
+                # 1) Abortamos si hay errores semánticos
                 if CompilerData.semantic_errors:
-                    print("Returning to editor.")
-                    self.view_controller.change_state(States.EDITOR)
-                else:
-                    print("Ready for next stage.")
-                    self.view_controller.change_state(States.EDITOR)
+                    self.popup = PopupDialog(
+                        self.screen,
+                        "Corrige los errores semánticos antes de continuar.",
+                        4000
+                    )
+                    return True
 
+                # 2) Intentamos generar el IR en memoria
+                ir_text = IntermediateCodeGenerator.generate()
+                if ir_text is None:
+                    self.popup = PopupDialog(
+                        self.screen,
+                        "El IR no pudo generarse. Revisa el AST o la tabla de símbolos.",
+                        4000
+                    )
+                    return True
+
+                # 3) Éxito → guardamos en CompilerData y pasamos a la vista IR
+                CompilerData.ir_raw = ir_text        # (por si aún no se guardó)
+                self.view_controller.change_state(States.IR_CODE_VIEW)
                 return True
             
             # Handle mouse dragging for camera control

@@ -17,9 +17,16 @@ class IntermediateCodeGenerator:
     def _as_symbol_table(raw: Any) -> SymbolTable:
         """
         Asegura que `raw` sea una instancia de SymbolTable.
-        Si viene como dict (o None), lo envuelve.
+        Si viene como dict (o None), crea una nueva SymbolTable vacía.
         """
-        return raw if isinstance(raw, SymbolTable) else SymbolTable(raw or {})
+        if isinstance(raw, SymbolTable):
+            return raw
+        # Creamos tabla vacía y luego, si querés, copias el dict allí
+        new_tbl = SymbolTable()
+        # Si `raw` era un dict, podrías transferir sus entradas:
+        # for name, entry in (raw or {}).items():
+        #     new_tbl.insert(name, entry)   # depende de tu API
+        return new_tbl
 
     # ──────────────────────────────────────────
     @classmethod
@@ -58,5 +65,5 @@ class IntermediateCodeGenerator:
         os.makedirs(os.path.dirname(out_file), exist_ok=True)
         with open(out_file, "w", encoding="utf-8") as fh:
             fh.write(ir_text)
-
+        CompilerData.ir_raw = ir_text
         return ir_text
