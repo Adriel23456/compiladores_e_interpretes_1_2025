@@ -6,6 +6,7 @@ from GUI.components.horizontal_scrollbar import HorizontalScrollbar
 from GUI.components.pop_up_dialog import PopupDialog
 from GUI.design_base import design
 from config import States, BASE_DIR, CompilerData
+from CompilerLogic.machineCodeGenerator import MachineCodeGenerator
 
 try:
     import pyperclip
@@ -54,7 +55,16 @@ class MachineCodeView(ViewBase):
             if os.path.exists(path):
                 with open(path, "r", encoding="utf-8") as fh:
                     asm_code = fh.read()
-        self.asm_lines = asm_code.splitlines() if asm_code else self.NOT_FOUND_MSG
+
+        if asm_code:
+            # Limpiar caracteres no imprimibles que puedan causar símbolos corruptos
+            cleaned_lines = []
+            for line in asm_code.splitlines():
+                cleaned = ''.join(c if c.isprintable() or c in '\t ' else ' ' for c in line)
+                cleaned_lines.append(cleaned)
+            self.asm_lines = cleaned_lines
+        else:
+            self.asm_lines = self.NOT_FOUND_MSG
 
     def _rebuild_layout(self):
         full = self.screen.get_rect()
@@ -114,7 +124,7 @@ class MachineCodeView(ViewBase):
     def handle_events(self, events):
         for ev in events:
             if self.back_btn.handle_event(ev):
-                self.view_controller.change_state(States.OPTIMIZER_VIEW)
+                self.view_controller.change_state(States.IR_OPTIMIZED)
 
             elif self.save_btn.handle_event(ev):
                 if self._code_valido():
@@ -128,7 +138,7 @@ class MachineCodeView(ViewBase):
                     self._copy_to_clipboard('\n'.join(self.asm_lines))
 
             elif self.next_btn.handle_event(ev):
-                self.view_controller.change_state(States.FINAL_VIEW)  # o el siguiente estado que definas
+                self.view_controller.change_state(States.FINAL_VIEW)
 
             if ev.type == pygame.MOUSEWHEEL:
                 if self.text_rect.collidepoint(pygame.mouse.get_pos()):

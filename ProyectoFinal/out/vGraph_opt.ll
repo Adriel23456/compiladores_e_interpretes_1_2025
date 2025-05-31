@@ -29,14 +29,14 @@ for.body:                                         ; preds = %entry, %for.body
   %storemerge3 = phi double [ 0.000000e+00, %entry ], [ %.67, %for.body ]
   %.9 = fmul double %storemerge3, 3.141600e+00
   %.10 = fdiv double %.9, 1.800000e+02
-  %.11 = call double @cos(double %.10)
+  %.11 = tail call double @cos(double %.10)
   %.12 = fmul double %storemerge3, %.11
   %.13 = fadd double %.12, 3.200000e+02
   store double %.13, double* @x, align 8
   %.15 = load double, double* @t, align 8
   %.17 = fmul double %.15, 3.141600e+00
   %.18 = fdiv double %.17, 1.800000e+02
-  %.19 = call double @sin(double %.18)
+  %.19 = tail call double @sin(double %.18)
   %.20 = fmul double %.15, %.19
   %.21 = fadd double %.20, 2.400000e+02
   store double %.21, double* @y, align 8
@@ -51,15 +51,15 @@ for.body:                                         ; preds = %entry, %for.body
   store double %storemerge2, double* @c, align 8
   %.52 = fadd double %storemerge2, 5.000000e-01
   %.53 = fptosi double %.52 to i32
-  call void @vg_set_color(i32 %.53)
+  tail call void @vg_set_color(i32 %.53)
   %.55 = load double, double* @x, align 8
   %.56 = fadd double %.55, 5.000000e-01
   %.57 = fptosi double %.56 to i32
   %.58 = load double, double* @y, align 8
   %.59 = fadd double %.58, 5.000000e-01
   %.60 = fptosi double %.59 to i32
-  call void @vg_draw_pixel(i32 %.57, i32 %.60)
-  call void @vg_wait(i32 1)
+  tail call void @vg_draw_pixel(i32 %.57, i32 %.60)
+  tail call void @vg_wait(i32 1)
   %.66 = load double, double* @t, align 8
   %.67 = fadd double %.66, 5.000000e+00
   store double %.67, double* @t, align 8
@@ -72,7 +72,7 @@ for.end:                                          ; preds = %for.body
 
 define i32 @_main() local_unnamed_addr {
 entry:
-  %.2 = call i32 @main()
+  %.2 = tail call i32 @main()
   ret i32 0
 }
 

@@ -6,6 +6,7 @@ from CompilerLogic.syntacticAnalyzer import SyntacticAnalyzer
 from CompilerLogic.semanticAnalyzer import SemanticAnalyzer 
 from CompilerLogic.intermediateCodeGenerator import IntermediateCodeGenerator
 from CompilerLogic.optimizer import Optimizer
-from CompilerLogic.codeGenerator import CodeGenerator 
+from CompilerLogic.codeGenerator import CodeGenerator
+from CompilerLogic.machineCodeGenerator import MachineCodeGenerator 
 
-__all__ = ['LexicalAnalyzer', 'SyntacticAnalyzer', 'SemanticAnalyzer', 'IntermediateCodeGenerator', 'Optimizer', 'CodeGenerator']
+__all__ = ['LexicalAnalyzer', 'SyntacticAnalyzer', 'SemanticAnalyzer', 'IntermediateCodeGenerator', 'Optimizer', 'CodeGenerator', 'MachineCodeGenerator']

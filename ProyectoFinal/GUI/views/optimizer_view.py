@@ -69,6 +69,26 @@ class OptimizerView(ViewBase):
                     ir_text = fh.read()
         self.ir_lines = ir_text.splitlines() if ir_text else self.NOT_FOUND_MSG
 
+
+    def _run_codegen(self) -> tuple[bool, str]:
+       
+        from CompilerLogic.machineCodeGenerator import MachineCodeGenerator
+
+        ir_source = "\n".join(self.ir_lines)
+
+        # Guardar el IR como archivo intermedio para el generador
+        temp_ir_path = os.path.join(BASE_DIR, "out", "vGraph_opt.ll")
+        with open(temp_ir_path, "w", encoding="utf-8") as f:
+            f.write(ir_source)
+
+        asm = MachineCodeGenerator.generate_asm(ir_path=temp_ir_path)
+
+        if asm is None:
+            return False, "generación de código máquina falló (ver consola)"
+        else:
+            CompilerData.asm_code = asm
+            return True, ""
+
     # ---------------------------------------------------------------------
     # Layout helpers
     def _rebuild_layout(self):
@@ -146,9 +166,13 @@ class OptimizerView(ViewBase):
                 if self._ir_valido():
                     self._copy_to_clipboard('\n'.join(self.ir_lines))
             elif self.next_btn.handle_event(ev):
-                # Aquí eliges el estado que represente la siguiente fase.
-                # Ejemplo ficticio:
-                self.view_controller.change_state(States.MACHINE_CODE)
+                if self._ir_valido():
+                    ok, msg = self._run_codegen()
+                    if ok:
+                        self.view_controller.change_state(States.MACHINE_CODE)
+                    else:
+                        self.popup = PopupDialog(self.screen, msg, 3000)
+
 
             # scroll ratón
             if ev.type == pygame.MOUSEWHEEL:
