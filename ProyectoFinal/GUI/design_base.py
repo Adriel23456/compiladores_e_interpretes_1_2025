@@ -358,7 +358,7 @@ class DesignSystem:
         elif window_size == "fullscreen":
             return (0, 0, pygame.FULLSCREEN)  # Special format for fullscreen mode
         else:  # Default to small
-            return (950, 750)
+            return (950, 550)
 
     def set_window_size(self, size_name):
         """

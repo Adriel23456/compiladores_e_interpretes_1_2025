@@ -26,6 +26,7 @@ class States:
     SEMANTIC_ANALYSIS = "SEMANTIC_ANALYSIS" #3rd compilation state
     IR_CODE_VIEW = "IR_CODE_VIEW" #4th compilation state
     IR_OPTIMIZED = "IR_OPTIMIZED" #5th compilation state
+    MACHINE_CODE = "MACHINE_CODE" #6th compilation state
     
 
 # Font size configurations

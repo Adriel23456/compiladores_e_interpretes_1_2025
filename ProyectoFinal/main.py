@@ -13,7 +13,9 @@ from GUI.views.syntactic_analysis_view import SyntacticAnalysisView
 from GUI.views.semantic_analysis_view import SemanticAnalysisView
 from GUI.views.ir_view import IRCodeView
 from GUI.views.optimizer_view import OptimizerView
+from GUI.views.machine_code_view import MachineCodeView
 from GUI.design_base import design
+
 
 def main():
     """
@@ -53,6 +55,7 @@ def main():
         controller.add_state(States.SEMANTIC_ANALYSIS, SemanticAnalysisView)
         controller.add_state(States.IR_CODE_VIEW, IRCodeView)
         controller.add_state(States.IR_OPTIMIZED, OptimizerView)  # Reuse IRCodeView for optimized view
+        controller.add_state(States.MACHINE_CODE, MachineCodeView)
         
         # Set initial state to Editor
         controller.set_initial_state(States.EDITOR)
