@@ -1,9 +1,10 @@
 from GUI.components.pop_up_dialog import PopupDialog
+from GUI.components.execution_popup import ExecutionPopup 
 from GUI.views.config_view import ConfigView
 from GUI.views.credits_view import CreditsView
 from GUI.view_base import ViewBase
 from GUI.views.grammar_view import GrammarView
-from ExternalPrograms.fileExplorer import FileExplorer
+from GUI.models.fileExplorer import FileExplorer
 from GUI.design_base import design
 from GUI.components.button import Button, ToolbarButton
 from GUI.components.textbox import TextBox
@@ -182,6 +183,11 @@ class EditorView(ViewBase):
         Args:
             events: List of pygame events
         """
+        # ───── Pop-up modal: absorbe todos los eventos ─────
+        if hasattr(self, 'popup') and self.popup.active:
+            self.popup.handle_events(events)   # siempre delega
+            return True                        # y evita que lleguen al resto
+
         # If config view is active, let it handle events first
         if self.config_view:
             if self.config_view.handle_events(events):
@@ -285,7 +291,13 @@ class EditorView(ViewBase):
                 self.open_grammar_view()
             
             if self.execute_button.handle_event(event):
-                self.execute_model.execute()
+                # crear pop-up si no existe ya
+                if not hasattr(self, 'popup') or not self.popup.active:
+                    self.popup = ExecutionPopup(
+                        self.screen,
+                        self.execute_model,
+                        on_close=lambda: None
+                    )
     
     def open_config_view(self):
         """Open the configuration view"""
@@ -641,7 +653,6 @@ class EditorView(ViewBase):
                 # Write to file
                 with open(self.current_file_path, 'w', encoding='utf-8') as file:
                     file.write(text_content)
-                print(f"File saved: {self.current_file_path}")
                 self.set_file_status("saved")
                 return True
             except Exception as e:
@@ -663,7 +674,6 @@ class EditorView(ViewBase):
                     # Store the file path
                     self.current_file_path = file_path
                     self.set_file_status("saved")
-                    print(f"File saved: {file_path}")
                 except Exception as e:
                     print(f"Error saving file: {e}")
         
@@ -671,7 +681,7 @@ class EditorView(ViewBase):
         # Nota: esta llamada no es bloqueante y devolverá inmediatamente
         FileExplorer.save_file_dialog(initial_dir=current_dir, callback=save_callback)
         return True
-    
+
     def load_file(self):
         """
         Versión ultra-robusta para cargar archivos que previene errores de índice
@@ -748,9 +758,6 @@ class EditorView(ViewBase):
                     # Actualizar la información del archivo
                     self.current_file_path = file_path
                     self.set_file_status("saved")
-                    
-                    # Registrar éxito
-                    print(f"File loaded: {file_path}")
                     
                 except Exception as e:
                     # Si algo falla, reiniciar a un estado conocido y seguro

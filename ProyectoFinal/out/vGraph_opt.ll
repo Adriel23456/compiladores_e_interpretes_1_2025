@@ -59,7 +59,7 @@ for.body:                                         ; preds = %entry, %for.body
   %.59 = fadd double %.58, 5.000000e-01
   %.60 = fptosi double %.59 to i32
   tail call void @vg_draw_pixel(i32 %.57, i32 %.60)
-  tail call void @vg_wait(i32 1)
+  tail call void @vg_wait(i32 50)
   %.66 = load double, double* @t, align 8
   %.67 = fadd double %.66, 5.000000e+00
   store double %.67, double* @t, align 8

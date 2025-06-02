@@ -97,7 +97,7 @@ main:
  addsd %xmm1, %xmm0
  cvttsd2si %xmm0, %esi
  callq *%r12
- movl $1, %edi
+ movl $50, %edi
  callq *%rbp
  movsd (%rbx), %xmm1
  addsd 40(%rsp), %xmm1

@@ -1,261 +1,252 @@
+# File: GUI/models/execute_model.py
 """
 Model for executing compiler and image viewer
 Handles launching external programs in separate terminals
+Cross-platform compatible (Windows/Linux/MacOS)
 """
 import os
 import subprocess
 import tempfile
+import platform
+import sys
 from config import BASE_DIR
 
 class ExecuteModel:
     """
     Model for executing compiler and image viewer
+    Cross-platform compatible
     """
+
     def __init__(self):
         """
-        Initialize the execute model
+        Initialize the execute model with platform detection
         """
-        self.vgraph_process = None
-        self.viewer_process = None
-    
-    def run_vgraph_executable(self):
+        self.client_process = None
+        
+        # Detect operating system
+        self.platform = platform.system().lower()
+        self.is_windows = self.platform == 'windows'
+        self.is_linux = self.platform == 'linux'
+        self.is_mac = self.platform == 'darwin'
+        
+        # Set executable names based on platform
+        if self.is_windows:
+            self.client_executable = "Client_execute_windows.exe"
+            self.hdmi_executable = "HDMI_execute_windows.exe"
+        elif self.is_linux:
+            self.client_executable = "Client_execute_linux"
+            self.hdmi_executable = "HDMI_execute_linux"
+        else:
+            # For macOS and other unsupported platforms
+            self.client_executable = None
+            self.hdmi_executable = None
+        
+        print(f"Platform detected: {platform.system()}")
+
+    # ──────────────────────────────────────────────────────────────
+    #  Platform-specific terminal launcher
+    # ──────────────────────────────────────────────────────────────
+    def _launch_in_terminal(self, executable_path: str, title: str) -> bool:
         """
-        Run the vGraph.exe executable in a new terminal window
+        Launch executable in platform-specific terminal
         """
         try:
-            # Define the path to the executable and out directory
-            exe_dir = os.path.join(BASE_DIR, "out")
-            exe_path = os.path.join(exe_dir, "vGraph.exe")
+            out_dir = os.path.join(BASE_DIR, 'out')
             
-            # Ensure the executable exists
-            if not os.path.exists(exe_path):
-                print(f"Error: Executable not found at {exe_path}")
+            if self.is_windows:
+                # Windows: Use cmd.exe with proper path handling
+                # Get just the executable name
+                exe_name = os.path.basename(executable_path)
+                
+                # Create a batch script to handle the execution properly
+                batch_content = f"""@echo off
+cd /d "{out_dir}"
+echo Launching {title}...
+echo ==============================
+"{exe_name}"
+echo ==============================
+echo {title} finished.
+echo Press any key to close...
+pause > nul
+"""
+                
+                # Create temporary batch file
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False) as batch_file:
+                    batch_file.write(batch_content)
+                    batch_path = batch_file.name
+                
+                try:
+                    # Execute the batch file
+                    process = subprocess.Popen(
+                        [batch_path],
+                        creationflags=subprocess.CREATE_NEW_CONSOLE if hasattr(subprocess, 'CREATE_NEW_CONSOLE') else 0,
+                        shell=True
+                    )
+                    
+                    # Clean up batch file after a delay (let it start first)
+                    import threading
+                    def cleanup():
+                        import time
+                        time.sleep(2)
+                        try:
+                            os.unlink(batch_path)
+                        except:
+                            pass
+                    threading.Thread(target=cleanup, daemon=True).start()
+                    
+                    return True
+                except Exception as e:
+                    print(f"Error executing batch file: {e}")
+                    # Try direct execution as fallback
+                    try:
+                        os.unlink(batch_path)
+                    except:
+                        pass
+                    
+                    # Fallback: Direct execution with START command
+                    try:
+                        cmd = f'start "vGraph {title}" /D "{out_dir}" /WAIT "{exe_name}"'
+                        subprocess.Popen(cmd, shell=True, cwd=out_dir)
+                        return True
+                    except Exception as e2:
+                        print(f"Fallback execution also failed: {e2}")
+                        return False
+                    
+            elif self.is_linux:
+                # Linux: Try different terminal emulators in order of preference
+                terminals = [
+                    ('gnome-terminal', ['gnome-terminal', '--', 'bash', '-c']),
+                    ('konsole', ['konsole', '-e', 'bash', '-c']),
+                    ('xfce4-terminal', ['xfce4-terminal', '-e', 'bash -c']),
+                    ('xterm', ['xterm', '-e', 'bash', '-c']),
+                    ('terminator', ['terminator', '-e', 'bash -c'])
+                ]
+                
+                # Commands to execute in terminal
+                bash_commands = [
+                    f'cd "{out_dir}"',
+                    f'echo "Launching {title}..."',
+                    f'echo "{"─" * 30}"',
+                    f'"{executable_path}"',
+                    f'echo "{"─" * 30}"',
+                    f'echo "{title} finished."',
+                    'echo "Press Enter to close"',
+                    'read'
+                ]
+                bash_script = ' && '.join(bash_commands)
+                
+                # Try each terminal until one works
+                for term_name, term_cmd in terminals:
+                    # Check if terminal is available
+                    check_result = subprocess.run(
+                        ['which', term_cmd[0]], 
+                        stdout=subprocess.PIPE, 
+                        stderr=subprocess.PIPE
+                    )
+                    
+                    if check_result.returncode == 0:
+                        try:
+                            # Adjust command based on terminal
+                            if term_name in ['xterm', 'xfce4-terminal', 'terminator']:
+                                # These terminals need the command as a single string
+                                full_cmd = term_cmd[:-1] + [f'{term_cmd[-1]} "{bash_script}"']
+                            else:
+                                # Others take the script as a separate argument
+                                full_cmd = term_cmd + [bash_script]
+                            
+                            process = subprocess.Popen(full_cmd)
+                            return True
+                        except Exception as e:
+                            print(f"Failed to launch in {term_name}: {e}")
+                            continue
+                
+                # If no terminal works, try direct execution
+                print("Warning: No terminal emulator found. Running directly...")
+                process = subprocess.run(
+                    executable_path, 
+                    cwd=out_dir,
+                    shell=False
+                )
+                return process.returncode == 0
+                
+            else:
+                # macOS and other platforms not yet implemented
+                print(f"OS {platform.system()} integration: Not yet implemented")
+                return False
+                
+        except Exception as e:
+            print(f"Error launching in terminal: {e}")
+            return False
+
+    # ──────────────────────────────────────────────────────────────
+    #  Execute Client executable
+    # ──────────────────────────────────────────────────────────────
+    def execute_client(self) -> bool:
+        """
+        Execute the Client launcher (cross-platform)
+        """
+        try:
+            # Check if platform is supported
+            if self.client_executable is None:
+                print(f"OS {platform.system()} integration: Not yet implemented")
                 return False
             
-            # Set execute permissions using chmod
-            subprocess.run(["chmod", "+x", exe_path], check=True)
+            # Build path to executable
+            client_path = os.path.join(BASE_DIR, "out", self.client_executable)
             
-            # Try different terminal emulators that might be available on Ubuntu
-            terminals = ["gnome-terminal", "xterm", "konsole", "xfce4-terminal"]
+            # Verify executable exists
+            if not os.path.exists(client_path):
+                print(f"Error: {self.client_executable} not found at {client_path}")
+                print(f"Please ensure {self.client_executable} is built and placed in the out/ directory.")
+                return False
             
-            for terminal in terminals:
+            # Make sure it's executable on Unix-like systems
+            if self.is_linux or self.is_mac:
                 try:
-                    # Check if the terminal is available
-                    if subprocess.run(["which", terminal], stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0:
-                        # Run the executable in a new terminal - IMPORTANTE: Usar el directorio 'out' como CWD
-                        if terminal == "gnome-terminal":
-                            self.vgraph_process = subprocess.Popen([
-                                terminal, "--", "bash", "-c", f"cd {exe_dir} && ./vGraph.exe; echo 'Press Enter to close'; read"
-                            ])
-                        elif terminal == "konsole" or terminal == "xfce4-terminal":
-                            self.vgraph_process = subprocess.Popen([
-                                terminal, "-e", f"bash -c \"cd {exe_dir} && ./vGraph.exe; echo 'Press Enter to close'; read\""
-                            ])
-                        else:  # xterm
-                            self.vgraph_process = subprocess.Popen([
-                                terminal, "-e", f"bash -c 'cd {exe_dir} && ./vGraph.exe; echo \"Press Enter to close\"; read'"
-                            ])
-                        
-                        print(f"Started vGraph.exe in {terminal} (working dir: {exe_dir})")
-                        return True
-                except Exception as e:
-                    print(f"Failed to launch using {terminal}: {e}")
-                    continue
+                    os.chmod(client_path, 0o755)
+                except:
+                    pass
             
-            print("No suitable terminal emulator found. Trying to run directly...")
-            # Fallback: just run it directly from the correct directory
-            self.vgraph_process = subprocess.Popen(["./vGraph.exe"], cwd=exe_dir)
-            print(f"Started vGraph.exe directly without terminal (working dir: {exe_dir})")
-            return True
-            
+            # Launch in terminal
+            return self._launch_in_terminal(client_path, "vGraph Client")
+
         except Exception as e:
-            print(f"Error running vGraph.exe: {e}")
+            print(f"Error executing client: {e}")
             return False
-    
-    def start_image_viewer(self):
+        
+    # ──────────────────────────────────────────────────────────────
+    #  Execute HDMI executable
+    # ──────────────────────────────────────────────────────────────
+    def execute_hdmi(self) -> bool:
         """
-        Start the image viewer in a separate process with its own terminal
+        Execute the HDMI launcher (cross-platform)
         """
         try:
-            # Create a temporary script to run the image viewer
-            fd, script_path = tempfile.mkstemp(suffix='.py', prefix='imageviewer_')
-            os.close(fd)
+            # Check if platform is supported
+            if self.hdmi_executable is None:
+                print(f"OS {platform.system()} integration: Not yet implemented")
+                return False
             
-            # Write the image viewer script to the temporary file
-            with open(script_path, 'w') as f:
-                f.write(f"""#!/usr/bin/env python3
-import os
-import sys
-import time
-
-# Agregar el directorio base al path para importar correctamente
-sys.path.insert(0, "{BASE_DIR}")
-
-# Ahora podemos importar config
-from config import FPS, WINDOW_TITLE, IMAGE_BIN_PATH, BASE_DIR
-
-# Forzar driver de video compatible
-os.environ.setdefault('SDL_VIDEODRIVER', 'x11')
-
-# Importar pygame después de configurar el entorno
-import pygame
-from ExternalPrograms.imageViewer import ImageViewer
-
-WIDTH, HEIGHT = 800, 600
-
-def main():
-    # Verificar que el archivo de imagen existe
-    print(f"Buscando archivo de imagen en: {{IMAGE_BIN_PATH}}")
-    
-    # Inicializar pygame (display y eventos)
-    pygame.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 24)
-    pygame.display.set_caption(WINDOW_TITLE + " - Image Viewer")
-    clock = pygame.time.Clock()
-
-    # Crear y arrancar el lector de imágenes en un hilo
-    viewer = ImageViewer(width=WIDTH, height=HEIGHT)
-    viewer.start()
-    
-    # Permitir que el visualizador se inicialice completamente
-    print("Esperando para iniciar visualización...")
-    time.sleep(1)
-    
-    # Variables para manejar errores
-    last_surface_time = time.time()
-    consecutive_failures = 0
-    max_failures = 30  # Máximo de errores consecutivos antes de reiniciar
-
-    running = True
-    print("Iniciando bucle de visualización...")
-    
-    while running:
-        # Manejo de eventos
-        for evt in pygame.event.get():
-            if evt.type == pygame.QUIT:
-                running = False
-            elif evt.type == pygame.KEYDOWN:
-                if evt.key == pygame.K_ESCAPE:
-                    running = False
-
-        # Obtener y mostrar el último frame leído
-        surf = viewer.get_surface()
-        if surf:
-            screen.blit(surf, (0, 0))
-            pygame.display.flip()
-            last_surface_time = time.time()
-            consecutive_failures = 0
-        else:
-            # Manejar fallo en obtener superficie
-            consecutive_failures += 1
-            current_time = time.time()
+            # Build path to executable
+            hdmi_path = os.path.join(BASE_DIR, "out", self.hdmi_executable)
             
-            # Si han pasado más de 5 segundos sin superficie válida
-            if current_time - last_surface_time > 5:
-                print("Advertencia: No se ha recibido frame válido en 5 segundos")
-                print(f"Verificando si existe: {{IMAGE_BIN_PATH}} = {{os.path.exists(IMAGE_BIN_PATH)}}")
-                last_surface_time = current_time
+            # Verify executable exists
+            if not os.path.exists(hdmi_path):
+                print(f"Error: {self.hdmi_executable} not found at {hdmi_path}")
+                print(f"Please ensure {self.hdmi_executable} is built and placed in the out/ directory.")
+                return False
             
-            # Si hay demasiados fallos consecutivos, mostrar mensaje
-            if consecutive_failures >= max_failures:
-                print("Muchos errores consecutivos - Reiniciando visualizador...")
-                viewer.stop()
-                time.sleep(1)  # Esperar un segundo
-                viewer = ImageViewer(width=WIDTH, height=HEIGHT)
-                viewer.start()
-                consecutive_failures = 0
-
-        # Mantener la tasa de fotogramas
-        clock.tick(FPS)
-        
-        # Mostrar FPS actuales cada segundo
-        if int(pygame.time.get_ticks() / 1000) % 5 == 0:
-            print(f"FPS: {{int(clock.get_fps())}}", end="\\r")
-
-    # Detener el hilo de lectura y cerrar pygame
-    print("\\nFinalizando visualizador...")
-    viewer.stop()
-    pygame.quit()
-    print("Test finalizado.")
-
-
-if __name__ == '__main__':
-    try:
-        main()
-    except Exception as e:
-        print(f"Error en ejecución principal: {{e}}")
-        import traceback
-        traceback.print_exc()
-        pygame.quit()
-        sys.exit(1)
-""")
-            
-            # Make the script executable
-            os.chmod(script_path, 0o755)
-            
-            # Try different terminal emulators
-            terminals = ["gnome-terminal", "xterm", "konsole", "xfce4-terminal"]
-            
-            for terminal in terminals:
+            # Make sure it's executable on Unix-like systems
+            if self.is_linux or self.is_mac:
                 try:
-                    # Check if the terminal is available
-                    if subprocess.run(["which", terminal], stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0:
-                        # Agregar PYTHONPATH para asegurar que puede encontrar los módulos
-                        env = os.environ.copy()
-                        if "PYTHONPATH" in env:
-                            env["PYTHONPATH"] = f"{BASE_DIR}:{env['PYTHONPATH']}"
-                        else:
-                            env["PYTHONPATH"] = BASE_DIR
-                            
-                        # Run the script in a new terminal with correct environment
-                        if terminal == "gnome-terminal":
-                            self.viewer_process = subprocess.Popen([
-                                terminal, "--", "python3", script_path
-                            ], env=env)
-                        elif terminal == "konsole" or terminal == "xfce4-terminal":
-                            cmd = f"PYTHONPATH={BASE_DIR} python3 {script_path}"
-                            self.viewer_process = subprocess.Popen([
-                                terminal, "-e", cmd
-                            ], env=env)
-                        else:  # xterm
-                            cmd = f"PYTHONPATH={BASE_DIR} python3 {script_path}"
-                            self.viewer_process = subprocess.Popen([
-                                terminal, "-e", cmd
-                            ], env=env)
-                        
-                        print(f"Started Image Viewer in {terminal}")
-                        return True
-                except Exception as e:
-                    print(f"Failed to launch using {terminal}: {e}")
-                    continue
+                    os.chmod(hdmi_path, 0o755)
+                except:
+                    pass
             
-            print("No suitable terminal emulator found. Trying to run directly...")
-            # Fallback: run in background with correct environment
-            env = os.environ.copy()
-            if "PYTHONPATH" in env:
-                env["PYTHONPATH"] = f"{BASE_DIR}:{env['PYTHONPATH']}"
-            else:
-                env["PYTHONPATH"] = BASE_DIR
-            self.viewer_process = subprocess.Popen(["python3", script_path], env=env)
-            print(f"Started Image Viewer directly")
-            return True
-            
+            # Launch in terminal
+            return self._launch_in_terminal(hdmi_path, "vGraph HDMI")
+
         except Exception as e:
-            print(f"Error starting image viewer: {e}")
+            print(f"Error executing HDMI: {e}")
             return False
-    
-    def execute(self):
-        """
-        Execute both the vGraph executable and the image viewer
-        """
-        # Run vGraph.exe
-        success1 = self.run_vgraph_executable()
-        
-        # Small delay to ensure executable has time to start
-        import time
-        time.sleep(1)
-        
-        # Start image viewer
-        success2 = self.start_image_viewer()
-        
-        return success1 and success2

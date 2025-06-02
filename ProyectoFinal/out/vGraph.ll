@@ -78,7 +78,7 @@ endif:
   %".59" = fadd double %".58", 0x3fe0000000000000
   %".60" = fptosi double %".59" to i32
   call void @"vg_draw_pixel"(i32 %".57", i32 %".60")
-  %".62" = fadd double 0x3ff0000000000000, 0x3fe0000000000000
+  %".62" = fadd double 0x4049000000000000, 0x3fe0000000000000
   %".63" = fptosi double %".62" to i32
   call void @"vg_wait"(i32 %".63")
   br label %"for.incr"

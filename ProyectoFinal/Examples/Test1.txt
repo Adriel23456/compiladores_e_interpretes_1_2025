@@ -16,6 +16,6 @@ frame {
         setcolor(c);
         draw pixel(x, y);
 
-        wait(1);  # Pequeño retraso para animación suave
+        wait(50);  # Pequeño retraso para animación suave
     }
 }

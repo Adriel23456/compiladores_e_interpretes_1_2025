@@ -138,7 +138,8 @@ class MachineCodeView(ViewBase):
                     self._copy_to_clipboard('\n'.join(self.asm_lines))
 
             elif self.next_btn.handle_event(ev):
-                self.view_controller.change_state(States.FINAL_VIEW)
+                self.view_controller.change_state(States.EDITOR)
+                return True
 
             if ev.type == pygame.MOUSEWHEEL:
                 if self.text_rect.collidepoint(pygame.mouse.get_pos()):
