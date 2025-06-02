@@ -100,9 +100,7 @@ class MachineCodeView(ViewBase):
 
         self.back_btn = Button(pygame.Rect(self.margin_side, y_btn, btn_w, btn_h),
                                "Ver IR optimizado")
-        self.save_btn = Button(pygame.Rect(self.back_btn.rect.right + gap, y_btn, btn_w, btn_h),
-                               "Guardar .s", fixed_width=btn_w)
-        self.copy_btn = Button(pygame.Rect(self.save_btn.rect.right + gap, y_btn, btn_w + 20, btn_h),
+        self.copy_btn = Button(pygame.Rect(self.back_btn.rect.right + gap, y_btn, btn_w + 20, btn_h),
                                "Copiar", fixed_width=btn_w + 20)
         self.next_btn = Button(pygame.Rect(self.copy_btn.rect.right + gap, y_btn,
                                     btn_w, btn_h),
@@ -125,13 +123,6 @@ class MachineCodeView(ViewBase):
         for ev in events:
             if self.back_btn.handle_event(ev):
                 self.view_controller.change_state(States.IR_OPTIMIZED)
-
-            elif self.save_btn.handle_event(ev):
-                if self._code_valido():
-                    path = os.path.join(BASE_DIR, "out", "vGraph.s")
-                    with open(path, "w", encoding="utf-8") as fh:
-                        fh.write('\n'.join(self.asm_lines))
-                    print(f"ASM guardado en {path}")
 
             elif self.copy_btn.handle_event(ev):
                 if self._code_valido():
@@ -196,7 +187,6 @@ class MachineCodeView(ViewBase):
         self.h_scroll.render(self.screen)
 
         self.back_btn.render(self.screen)
-        self.save_btn.render(self.screen)
         self.copy_btn.render(self.screen)
         self.next_btn.render(self.screen)
 
