@@ -29,7 +29,7 @@ entry:
   br label %for.body
 
 for.body:                                         ; preds = %entry, %for.body
-  %storemerge3 = phi double [ 0.000000e+00, %entry ], [ %.118, %for.body ]
+  %storemerge3 = phi double [ 0.000000e+00, %entry ], [ %.68, %for.body ]
   %.10 = fmul double %storemerge3, 3.141600e+00
   %.11 = fdiv double %.10, 1.800000e+02
   %.12 = tail call double @cos(double %.11)
@@ -62,61 +62,11 @@ for.body:                                         ; preds = %entry, %for.body
   %.60 = fadd double %.59, 5.000000e-01
   %.61 = fptosi double %.60 to i32
   tail call void @vg_draw_pixel(i32 %.58, i32 %.61)
-  %.63 = load double, double* @x, align 8
-  %.64 = fadd double %.63, 1.000000e+00
-  %.65 = fadd double %.64, 5.000000e-01
-  %.66 = fptosi double %.65 to i32
-  %.67 = load double, double* @y, align 8
-  %.68 = fadd double %.67, 1.000000e+00
-  %.69 = fadd double %.68, 5.000000e-01
-  %.70 = fptosi double %.69 to i32
-  tail call void @vg_draw_pixel(i32 %.66, i32 %.70)
-  %.72 = load double, double* @x, align 8
-  %.73 = fadd double %.72, 1.000000e+00
-  %.74 = fadd double %.73, 5.000000e-01
-  %.75 = fptosi double %.74 to i32
-  %.76 = load double, double* @y, align 8
-  %.77 = fadd double %.76, 5.000000e-01
-  %.78 = fptosi double %.77 to i32
-  tail call void @vg_draw_pixel(i32 %.75, i32 %.78)
-  %.80 = load double, double* @x, align 8
-  %.81 = fadd double %.80, 5.000000e-01
-  %.82 = fptosi double %.81 to i32
-  %.83 = load double, double* @y, align 8
-  %.84 = fadd double %.83, 1.000000e+00
-  %.85 = fadd double %.84, 5.000000e-01
-  %.86 = fptosi double %.85 to i32
-  tail call void @vg_draw_pixel(i32 %.82, i32 %.86)
-  %.88 = load double, double* @x, align 8
-  %.89 = fadd double %.88, -1.000000e+00
-  %.90 = fadd double %.89, 5.000000e-01
-  %.91 = fptosi double %.90 to i32
-  %.92 = load double, double* @y, align 8
-  %.93 = fadd double %.92, -1.000000e+00
-  %.94 = fadd double %.93, 5.000000e-01
-  %.95 = fptosi double %.94 to i32
-  tail call void @vg_draw_pixel(i32 %.91, i32 %.95)
-  %.97 = load double, double* @x, align 8
-  %.98 = fadd double %.97, -1.000000e+00
-  %.99 = fadd double %.98, 5.000000e-01
-  %.100 = fptosi double %.99 to i32
-  %.101 = load double, double* @y, align 8
-  %.102 = fadd double %.101, 5.000000e-01
-  %.103 = fptosi double %.102 to i32
-  tail call void @vg_draw_pixel(i32 %.100, i32 %.103)
-  %.105 = load double, double* @x, align 8
-  %.106 = fadd double %.105, 5.000000e-01
-  %.107 = fptosi double %.106 to i32
-  %.108 = load double, double* @y, align 8
-  %.109 = fadd double %.108, -1.000000e+00
-  %.110 = fadd double %.109, 5.000000e-01
-  %.111 = fptosi double %.110 to i32
-  tail call void @vg_draw_pixel(i32 %.107, i32 %.111)
-  tail call void @vg_wait(i32 100)
-  %.117 = load double, double* @t, align 8
-  %.118 = fadd double %.117, 5.000000e+00
-  store double %.118, double* @t, align 8
-  %.6 = fcmp olt double %.118, 3.600000e+02
+  tail call void @vg_wait(i32 125)
+  %.67 = load double, double* @t, align 8
+  %.68 = fadd double %.67, 5.000000e+00
+  store double %.68, double* @t, align 8
+  %.6 = fcmp olt double %.68, 3.600000e+02
   br i1 %.6, label %for.body, label %for.end
 
 for.end:                                          ; preds = %for.body

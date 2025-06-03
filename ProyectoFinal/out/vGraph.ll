@@ -57,9 +57,9 @@ for.body:
   %".31" = fcmp oeq double %".30",              0x0
   br i1 %".31", label %"then", label %"else"
 for.incr:
-  %".117" = load double, double* @"t"
-  %".118" = fadd double %".117", 0x4014000000000000
-  store double %".118", double* @"t"
+  %".67" = load double, double* @"t"
+  %".68" = fadd double %".67", 0x4014000000000000
+  store double %".68", double* @"t"
   br label %"for.cond"
 for.end:
   ret i32 0
@@ -79,59 +79,9 @@ endif:
   %".60" = fadd double %".59", 0x3fe0000000000000
   %".61" = fptosi double %".60" to i32
   call void @"vg_draw_pixel"(i32 %".58", i32 %".61")
-  %".63" = load double, double* @"x"
-  %".64" = fadd double %".63", 0x3ff0000000000000
-  %".65" = fadd double %".64", 0x3fe0000000000000
-  %".66" = fptosi double %".65" to i32
-  %".67" = load double, double* @"y"
-  %".68" = fadd double %".67", 0x3ff0000000000000
-  %".69" = fadd double %".68", 0x3fe0000000000000
-  %".70" = fptosi double %".69" to i32
-  call void @"vg_draw_pixel"(i32 %".66", i32 %".70")
-  %".72" = load double, double* @"x"
-  %".73" = fadd double %".72", 0x3ff0000000000000
-  %".74" = fadd double %".73", 0x3fe0000000000000
-  %".75" = fptosi double %".74" to i32
-  %".76" = load double, double* @"y"
-  %".77" = fadd double %".76", 0x3fe0000000000000
-  %".78" = fptosi double %".77" to i32
-  call void @"vg_draw_pixel"(i32 %".75", i32 %".78")
-  %".80" = load double, double* @"x"
-  %".81" = fadd double %".80", 0x3fe0000000000000
-  %".82" = fptosi double %".81" to i32
-  %".83" = load double, double* @"y"
-  %".84" = fadd double %".83", 0x3ff0000000000000
-  %".85" = fadd double %".84", 0x3fe0000000000000
-  %".86" = fptosi double %".85" to i32
-  call void @"vg_draw_pixel"(i32 %".82", i32 %".86")
-  %".88" = load double, double* @"x"
-  %".89" = fsub double %".88", 0x3ff0000000000000
-  %".90" = fadd double %".89", 0x3fe0000000000000
-  %".91" = fptosi double %".90" to i32
-  %".92" = load double, double* @"y"
-  %".93" = fsub double %".92", 0x3ff0000000000000
-  %".94" = fadd double %".93", 0x3fe0000000000000
-  %".95" = fptosi double %".94" to i32
-  call void @"vg_draw_pixel"(i32 %".91", i32 %".95")
-  %".97" = load double, double* @"x"
-  %".98" = fsub double %".97", 0x3ff0000000000000
-  %".99" = fadd double %".98", 0x3fe0000000000000
-  %".100" = fptosi double %".99" to i32
-  %".101" = load double, double* @"y"
-  %".102" = fadd double %".101", 0x3fe0000000000000
-  %".103" = fptosi double %".102" to i32
-  call void @"vg_draw_pixel"(i32 %".100", i32 %".103")
-  %".105" = load double, double* @"x"
-  %".106" = fadd double %".105", 0x3fe0000000000000
-  %".107" = fptosi double %".106" to i32
-  %".108" = load double, double* @"y"
-  %".109" = fsub double %".108", 0x3ff0000000000000
-  %".110" = fadd double %".109", 0x3fe0000000000000
-  %".111" = fptosi double %".110" to i32
-  call void @"vg_draw_pixel"(i32 %".107", i32 %".111")
-  %".113" = fadd double 0x4059000000000000, 0x3fe0000000000000
-  %".114" = fptosi double %".113" to i32
-  call void @"vg_wait"(i32 %".114")
+  %".63" = fadd double 0x405f400000000000, 0x3fe0000000000000
+  %".64" = fptosi double %".63" to i32
+  call void @"vg_wait"(i32 %".64")
   br label %"for.incr"
 else:
   %".36" = load double, double* @"t"

@@ -1,8 +1,0 @@
-# Semantic Error Example
-
-(int) x;
-(bool) flag;
-(color) c;
-
-x = true;
-y = 5;
