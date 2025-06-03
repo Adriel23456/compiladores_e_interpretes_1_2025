@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>       /* sqrt, abs */
+#include <time.h>  // Necesario para nanosleep
 
 #if defined(__linux__)
     #include <stdarg.h>

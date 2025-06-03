@@ -7,6 +7,8 @@ from GUI.components.pop_up_dialog import PopupDialog
 from GUI.design_base import design
 from config import States, BASE_DIR, CompilerData
 from CompilerLogic.machineCodeGenerator import MachineCodeGenerator
+from CompilerLogic.executableGenerator import ExecutableGenerator
+import platform
 
 try:
     import pyperclip
@@ -129,6 +131,24 @@ class MachineCodeView(ViewBase):
                     self._copy_to_clipboard('\n'.join(self.asm_lines))
 
             elif self.next_btn.handle_event(ev):
+                # Ruta fija al archivo .asm
+                asm_path = os.path.join(BASE_DIR, "out", "vGraph.asm")
+
+                # Ruta dinámica al runtime según plataforma
+                platform_tag = platform.system().lower()  # 'windows', 'linux', 'darwin'
+                runtime_obj_path = os.path.join(BASE_DIR, "CompilerLogic", "Ir", f"runtime_{platform_tag}.o")
+
+                # Generador del ejecutable
+                generator = ExecutableGenerator(
+                    asm_path=asm_path,
+                    runtime_obj_path=runtime_obj_path,
+                    output_dir=os.path.join(BASE_DIR, "out"),
+                    exe_name="vGraph.exe"
+                )
+
+                success, msg = generator.build()
+                print(msg)  # Muestra en la consola de Pygame o terminal
+
                 self.view_controller.change_state(States.EDITOR)
                 return True
 

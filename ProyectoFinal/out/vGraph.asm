@@ -15,8 +15,12 @@
 .LCPI0_6:
  .quad 0x416fe00000000000
 .LCPI0_7:
- .quad 0x4014000000000000
+ .quad 0x3ff0000000000000
 .LCPI0_8:
+ .quad 0xbff0000000000000
+.LCPI0_9:
+ .quad 0x4014000000000000
+.LCPI0_10:
  .quad 0x4076800000000000
  .section .rodata.cst16,"aM",@progbits,16
  .p2align 3
@@ -41,46 +45,54 @@ main:
  .cfi_def_cfa_offset 48
  pushq %rbx
  .cfi_def_cfa_offset 56
- subq $72, %rsp
- .cfi_def_cfa_offset 128
+ subq $88, %rsp
+ .cfi_def_cfa_offset 144
  .cfi_offset %rbx, -56
  .cfi_offset %r12, -48
  .cfi_offset %r13, -40
  .cfi_offset %r14, -32
  .cfi_offset %r15, -24
  .cfi_offset %rbp, -16
- movabsq $t, %rbx
- movq $0, (%rbx)
+ movabsq $vg_clear, %rax
+ callq *%rax
+ movabsq $t, %r15
+ movq $0, (%r15)
  xorpd %xmm1, %xmm1
  movabsq $.LCPI0_0, %rax
  movsd (%rax), %xmm0
- movsd %xmm0, 24(%rsp)
+ movsd %xmm0, 40(%rsp)
  movabsq $.LCPI0_1, %rax
  movsd (%rax), %xmm0
- movsd %xmm0, 16(%rsp)
+ movsd %xmm0, 32(%rsp)
  movabsq $.LCPI0_2, %rax
  movsd (%rax), %xmm0
- movsd %xmm0, 64(%rsp)
- movabsq $x, %r15
+ movsd %xmm0, 80(%rsp)
+ movabsq $x, %r13
  movabsq $.LCPI0_3, %rax
  movsd (%rax), %xmm0
- movsd %xmm0, 8(%rsp)
+ movsd %xmm0, (%rsp)
  movabsq $.LCPI0_4, %rax
  movsd (%rax), %xmm0
- movsd %xmm0, 56(%rsp)
- movabsq $y, %r13
+ movsd %xmm0, 72(%rsp)
+ movabsq $y, %rbx
  movabsq $.LCPI0_6, %rax
  movsd (%rax), %xmm0
- movsd %xmm0, 48(%rsp)
+ movsd %xmm0, 64(%rsp)
  movabsq $vg_set_color, %r14
  movabsq $vg_draw_pixel, %r12
- movabsq $vg_wait, %rbp
  movabsq $.LCPI0_7, %rax
  movsd (%rax), %xmm0
- movsd %xmm0, 40(%rsp)
+ movsd %xmm0, 24(%rsp)
  movabsq $.LCPI0_8, %rax
  movsd (%rax), %xmm0
- movsd %xmm0, 32(%rsp)
+ movsd %xmm0, 16(%rsp)
+ movabsq $vg_wait, %rbp
+ movabsq $.LCPI0_9, %rax
+ movsd (%rax), %xmm0
+ movsd %xmm0, 56(%rsp)
+ movabsq $.LCPI0_10, %rax
+ movsd (%rax), %xmm0
+ movsd %xmm0, 48(%rsp)
  jmp .LBB0_1
  .p2align 4, 0x90
 .LBB0_3:
@@ -89,40 +101,98 @@ main:
  addsd %xmm1, %xmm0
  cvttsd2si %xmm0, %edi
  callq *%r14
- movsd (%r15), %xmm0
- movsd 8(%rsp), %xmm1
+ movsd (%r13), %xmm0
+ movsd (%rsp), %xmm1
  addsd %xmm1, %xmm0
  cvttsd2si %xmm0, %edi
- movsd (%r13), %xmm0
+ movsd (%rbx), %xmm0
  addsd %xmm1, %xmm0
  cvttsd2si %xmm0, %esi
  callq *%r12
- movl $50, %edi
+ movsd (%r13), %xmm0
+ movsd 24(%rsp), %xmm1
+ addsd %xmm1, %xmm0
+ movsd (%rsp), %xmm2
+ addsd %xmm2, %xmm0
+ cvttsd2si %xmm0, %edi
+ movsd (%rbx), %xmm0
+ addsd %xmm1, %xmm0
+ addsd %xmm2, %xmm0
+ cvttsd2si %xmm0, %esi
+ callq *%r12
+ movsd (%r13), %xmm0
+ addsd 24(%rsp), %xmm0
+ movsd (%rsp), %xmm1
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %edi
+ movsd (%rbx), %xmm0
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %esi
+ callq *%r12
+ movsd (%r13), %xmm0
+ movsd (%rsp), %xmm1
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %edi
+ movsd (%rbx), %xmm0
+ addsd 24(%rsp), %xmm0
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %esi
+ callq *%r12
+ movsd (%r13), %xmm0
+ movsd 16(%rsp), %xmm2
+ addsd %xmm2, %xmm0
+ movsd (%rsp), %xmm1
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %edi
+ movsd (%rbx), %xmm0
+ addsd %xmm2, %xmm0
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %esi
+ callq *%r12
+ movsd (%r13), %xmm0
+ addsd 16(%rsp), %xmm0
+ movsd (%rsp), %xmm1
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %edi
+ movsd (%rbx), %xmm0
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %esi
+ callq *%r12
+ movsd (%r13), %xmm0
+ movsd (%rsp), %xmm1
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %edi
+ movsd (%rbx), %xmm0
+ addsd 16(%rsp), %xmm0
+ addsd %xmm1, %xmm0
+ cvttsd2si %xmm0, %esi
+ callq *%r12
+ movl $100, %edi
  callq *%rbp
- movsd (%rbx), %xmm1
- addsd 40(%rsp), %xmm1
- movsd %xmm1, (%rbx)
- movsd 32(%rsp), %xmm0
+ movsd (%r15), %xmm1
+ addsd 56(%rsp), %xmm1
+ movsd %xmm1, (%r15)
+ movsd 48(%rsp), %xmm0
  ucomisd %xmm1, %xmm0
  jbe .LBB0_4
 .LBB0_1:
- movsd %xmm1, (%rsp)
+ movsd %xmm1, 8(%rsp)
  movapd %xmm1, %xmm0
- mulsd 24(%rsp), %xmm0
- divsd 16(%rsp), %xmm0
+ mulsd 40(%rsp), %xmm0
+ divsd 32(%rsp), %xmm0
  movabsq $cos, %rax
  callq *%rax
- mulsd (%rsp), %xmm0
- addsd 64(%rsp), %xmm0
- movsd %xmm0, (%r15)
- movsd (%rbx), %xmm0
- movsd %xmm0, (%rsp)
- mulsd 24(%rsp), %xmm0
- divsd 16(%rsp), %xmm0
+ mulsd 8(%rsp), %xmm0
+ addsd 80(%rsp), %xmm0
+ movsd %xmm0, (%r13)
+ movsd (%r15), %xmm0
+ movsd %xmm0, 8(%rsp)
+ mulsd 40(%rsp), %xmm0
+ divsd 32(%rsp), %xmm0
  movabsq $sin, %rax
  callq *%rax
- movsd (%rbx), %xmm1
- movsd 8(%rsp), %xmm2
+ movsd (%r15), %xmm1
+ movsd (%rsp), %xmm2
  addsd %xmm2, %xmm1
  cvttsd2si %xmm1, %eax
  movslq %eax, %rdx
@@ -138,10 +208,10 @@ main:
  cmpl $1, %ecx
  sete %cl
  cmpl %esi, %edx
- mulsd (%rsp), %xmm0
- addsd 56(%rsp), %xmm0
- movsd %xmm0, (%r13)
- movsd 48(%rsp), %xmm0
+ mulsd 8(%rsp), %xmm0
+ addsd 72(%rsp), %xmm0
+ movsd %xmm0, (%rbx)
+ movsd 64(%rsp), %xmm0
  movapd %xmm2, %xmm1
  je .LBB0_3
  movb %cl, %al
@@ -150,7 +220,7 @@ main:
  jmp .LBB0_3
 .LBB0_4:
  xorl %eax, %eax
- addq $72, %rsp
+ addq $88, %rsp
  .cfi_def_cfa_offset 56
  popq %rbx
  .cfi_def_cfa_offset 48
