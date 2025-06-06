@@ -58,7 +58,7 @@ class SemanticAnalyzer(VGraphVisitor):
         self.warnings = []
         self.current_function = None
         self.ast = CompilerData.ast
-        self.color_constants = {"rojo", "azul", "verde", "negro", "blanco"}
+        self.color_constants = {"rojo", "azul", "verde", "negro", "blanco", "cyan", "magenta", "amarillo"}
         self.enriched_tree = {}
 
         images_dir = os.path.join(ASSETS_DIR, "Images")
@@ -111,9 +111,13 @@ class SemanticAnalyzer(VGraphVisitor):
         param_ids = [i.getText() for i in param_list.ID()] if param_list else []
         param_types = ["int"] * len(param_ids)
 
-        if not self.symbol_table.declare_function(name, param_types):
+        # 1. Verificar redeclaración (funciones globales)
+        if self.symbol_table.get_function(name):
             self.errors.append(f"Redeclaration of function: '{name}'")
             return None
+
+        # 2. Declarar la función antes de entrar al bloque (soporte recursivo)
+        self.symbol_table.declare_function(name, param_types)
 
         self.symbol_table.enter_scope()
         self.current_function = name
