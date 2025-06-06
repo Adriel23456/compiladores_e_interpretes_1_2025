@@ -91,6 +91,7 @@ class SemanticAnalyzer(VGraphVisitor):
     def visitDeclaration(self, ctx: VGraphParser.DeclarationContext):
         vtype_ctx = ctx.typeDeclaration().vartype()
         vtype = vtype_ctx.getText()
+        line = ctx.start.line
         if ctx.ID():
             names = [ctx.ID().getText()]
         elif ctx.idList():
@@ -99,10 +100,10 @@ class SemanticAnalyzer(VGraphVisitor):
             names = []
         for name in names:
             if not name[0].islower() or len(name) > 15:
-                self.errors.append(f"Invalid identifier: '{name}'")
+                self.errors.append(f"Line {line}: Invalid identifier: '{name}'")
                 continue
             if not self.symbol_table.declare(name, VariableSymbol(name, vtype)):
-                self.errors.append(f"Redeclaration of variable: '{name}'")
+                self.errors.append(f"Line {line}: Redeclaration of variable: '{name}'")
         return None
 
     def visitFunctionDeclStatement(self, ctx: VGraphParser.FunctionDeclStatementContext):
@@ -134,32 +135,36 @@ class SemanticAnalyzer(VGraphVisitor):
     def visitAssignmentStatement(self, ctx: VGraphParser.AssignmentStatementContext):
         return self.visit(ctx.assignmentExpression())
 
-    def visitAssignmentExpression(self, ctx: VGraphParser.AssignmentExpressionContext):
+    def visitAssignmentExpression(self, ctx):
         name = ctx.ID().getText()
+        line = ctx.start.line
         symbol = self.symbol_table.lookup(name)
         if not symbol:
-            self.errors.append(f"Undeclared variable: '{name}'")
+            self.errors.append(f"Line {line}: Undeclared variable: '{name}'")
         else:
+            symbol.initialized = True
             expr_type = self.evaluate_expression_type(ctx.expr())
             if expr_type and expr_type != symbol.type:
-            # Permitir asignar float a int si hay una conversión implícita
                 if symbol.type == "int" and expr_type == "float":
-                    self.warnings.append(f"Implicit cast from float to int in assignment to '{name}'")
-                    symbol.initialized = True
-                    return None
-                    self.errors.append(f"Type mismatch: cannot assign {expr_type} to variable '{name}' of type {symbol.type}")
-            else:
-                symbol.initialized = True
+                    self.warnings.append(f"Line {line}: Implicit cast from float to int in assignment to '{name}'")
+                else:
+                    self.errors.append(f"Line {line}: Type mismatch: cannot assign {expr_type} to variable '{name}' of type {symbol.type}")
         return None
-
+    
     def visitReturnStatement(self, ctx):
+        line = ctx.start.line
         if self.current_function is None:
-            self.errors.append("Return statement outside of a function")
-        self.evaluate_expression_type(ctx.expression())
+            self.errors.append("Line {line}: Return statement outside of a function")
+        try:
+            self.evaluate_expression_type(ctx.expr())
+        except AttributeError:
+            try:
+                self.evaluate_expression_type(ctx.returnExpr())
+            except AttributeError:
+                self.errors.append("Line {line}: Return statement must return a value")
         return None
 
     def evaluate_expression_type(self, expr):
-        # Manejo de casting explícito (por ejemplo, (int)(expresion))
         if hasattr(expr, 'typeCast') and expr.typeCast():
             target_type = expr.typeCast().getText()
             inner_expr = expr.expr()
@@ -171,9 +176,10 @@ class SemanticAnalyzer(VGraphVisitor):
             else:
                 self.errors.append(f"Invalid cast from {inner_type} to {target_type}")
                 return None
+
+        line = expr.start.line if hasattr(expr, 'start') else 'unknown'
         ctx_name = type(expr).__name__
         node_id = str(id(expr))
-
         children = []
         inferred_type = None
 
@@ -190,50 +196,85 @@ class SemanticAnalyzer(VGraphVisitor):
             else:
                 symbol = self.symbol_table.lookup(name)
                 if not symbol:
-                    self.errors.append(f"Use of undeclared variable: '{name}'")
+                    self.errors.append(f"Line {line}: Use of undeclared variable: '{name}'")
                     return None
                 symbol.used = True
                 if not symbol.initialized:
-                    self.errors.append(f"Variable '{name}' used before initialization")
+                    self.errors.append(f"Line {line}: Variable '{name}' used before initialization")
                 inferred_type = symbol.type
         elif ctx_name in ["SinExprContext", "CosExprContext"]:
             arg_type = self.evaluate_expression_type(expr.expr())
             children.append(str(id(expr.expr())))
             if arg_type not in ["int", "float"]:
-                self.errors.append(f"Function '{ctx_name[:-11].lower()}' expects numeric argument, got {arg_type}")
+                self.errors.append(f"Line {line}: Function '{ctx_name[:-11].lower()}' expects numeric argument, got {arg_type}")
                 return None
             inferred_type = "float"
+        elif ctx_name == "ParenExprContext":
+            inferred_type = self.evaluate_expression_type(expr.expr())
         elif hasattr(expr, "op") and expr.op:
             left_type = self.evaluate_expression_type(expr.expr(0))
             right_type = self.evaluate_expression_type(expr.expr(1)) if expr.getChildCount() > 1 else None
             children.extend([str(id(expr.expr(0)))])
             if expr.getChildCount() > 1:
                 children.extend([str(id(expr.expr(1)))])
-
             if left_type is None or right_type is None:
                 return None
-
             op = expr.op.text
             if op in ['+', '-', '*', '/', '%']:
                 if left_type not in ['int', 'float'] or right_type not in ['int', 'float']:
-                    self.errors.append(f"Arithmetic operation not allowed between types {left_type} and {right_type}")
+                    self.errors.append(f"Line {line}: Arithmetic operation not allowed between types {left_type} and {right_type}")
                     return None
                 inferred_type = 'int' if left_type == right_type == 'int' else 'float'
             elif op in ['<', '>', '<=', '>=']:
                 if left_type != 'int' or right_type != 'int':
-                    self.errors.append(f"Comparison not allowed between types {left_type} and {right_type}")
+                    self.errors.append(f"Line {line}: Comparison not allowed between types {left_type} and {right_type}")
                     return None
                 inferred_type = 'bool'
             elif op in ['==', '!=']:
                 if left_type != right_type:
-                    self.errors.append(f"Equality comparison between different types: {left_type} and {right_type}")
+                    self.errors.append(f"Line {line}: Equality comparison between different types: {left_type} and {right_type}")
                     return None
                 inferred_type = 'bool'
             elif op in ['&&', '||']:
                 if left_type != 'bool' or right_type != 'bool':
-                    self.errors.append(f"Logical operation not allowed between types {left_type} and {right_type}")
+                    self.errors.append(f"Line {line}: Logical operation not allowed between types {left_type} and {right_type}")
                     return None
                 inferred_type = 'bool'
+        elif hasattr(expr, 'expr') and callable(expr.expr):
+            try:
+                left_type = self.evaluate_expression_type(expr.expr(0))
+                right_type = self.evaluate_expression_type(expr.expr(1))
+                children.extend([str(id(expr.expr(0))), str(id(expr.expr(1)))])
+                if left_type is None or right_type is None:
+                    return None
+                if left_type not in ['int', 'float'] or right_type not in ['int', 'float']:
+                    self.errors.append(f"Line {line}: Binary operation not allowed between types {left_type} and {right_type}")
+                    return None
+                inferred_type = 'float' if 'float' in [left_type, right_type] else 'int'
+            except Exception as e:
+                self.errors.append(f"Line {line}: Unexpected error evaluating binary expression: {e}")
+                return None
+        elif ctx_name == "FuncCallExprContext":
+            fname = expr.ID().getText()
+            arg_types = []
+            if hasattr(expr, 'expr'):
+                expr_children = expr.expr()
+                if not isinstance(expr_children, list):
+                    expr_children = [expr_children]
+                for child in expr_children:
+                    if child:
+                        child_type = self.evaluate_expression_type(child)
+                        if child_type is None:
+                            return None
+                        arg_types.append(child_type)
+            else:
+                arg_types.append("unknown")
+            if fname in ["cos", "sin"]:
+                for arg in arg_types:
+                    if arg not in ["int", "float"]:
+                        self.errors.append(f"Line {line}: Function '{fname}' expects numeric argument, got {arg}")
+                        return None
+                inferred_type = "float"
 
         if inferred_type:
             self.enriched_tree[node_id] = {
@@ -249,15 +290,16 @@ class SemanticAnalyzer(VGraphVisitor):
         fname = ctx.ID().getText()
         args = ctx.expression()
         arg_types = [self.evaluate_expression_type(arg) for arg in args]
+        line = ctx.start.line
 
         if fname in ["cos", "sin"]:
             if len(arg_types) != 1 or arg_types[0] not in ["int", "float"]:
-                self.errors.append(f"Function '{fname}' expects one numeric argument")
+                self.errors.append(f"Line {line}: Function '{fname}' expects one numeric argument")
                 return None
             return "float"
         elif fname == "setcolor":
             if len(arg_types) != 1 or arg_types[0] != "color":
-                self.errors.append("Function 'setcolor' expects one color argument")
+                self.errors.append("Line {line}: Function 'setcolor' expects one color argument")
                 return None
             return None
         elif fname.startswith("draw"):
@@ -268,14 +310,14 @@ class SemanticAnalyzer(VGraphVisitor):
 
         fdecl = self.symbol_table.get_function(fname)
         if not fdecl:
-            self.errors.append(f"Call to undefined function '{fname}'")
+            self.errors.append(f"Line {line}: Call to undefined function '{fname}'")
             return None
         if len(arg_types) != len(fdecl.param_types):
-            self.errors.append(f"Function '{fname}' expects {len(fdecl.param_types)} arguments but got {len(arg_types)}")
+            self.errors.append(f"Line {line}: Function '{fname}' expects {len(fdecl.param_types)} arguments but got {len(arg_types)}")
             return None
         for expected, actual in zip(fdecl.param_types, arg_types):
             if expected != actual:
-                self.errors.append(f"Function '{fname}' argument type mismatch: expected {expected}, got {actual}")
+                self.errors.append(f"Line {line}: Function '{fname}' argument type mismatch: expected {expected}, got {actual}")
                 return None
         return None
 
